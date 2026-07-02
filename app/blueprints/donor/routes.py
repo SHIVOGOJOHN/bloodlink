@@ -101,3 +101,36 @@ def profile_setup():
 
     return render_template("donor/profile_setup.html", default_name=default_name, default_phone=default_phone)
 
+
+@donor_bp.route("/profile")
+@role_required("donor")
+def profile():
+    donor = current_user.donor
+    if not donor:
+        return redirect(url_for("donor.profile_setup"))
+
+    # Eligibility check
+    from app.utils.matching import is_eligible
+    from datetime import date
+    eligible, days_since = is_eligible(donor)
+    days_left = max(0, 90 - days_since) if days_since is not None else 0
+
+    # Badges check
+    donation_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
+    badges = []
+    if donation_count >= 1:
+        badges.append("First Drop")
+    if donation_count >= 5:
+        badges.append("Life Saver")
+    if donation_count >= 10:
+        badges.append("Blood Hero")
+
+    return render_template(
+        "donor/profile.html",
+        donor=donor,
+        eligible=eligible,
+        days_left=days_left,
+        donation_count=donation_count,
+        badges=badges,
+    )
+

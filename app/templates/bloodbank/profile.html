@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Blood Bank Profile — BloodLink{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="page-title">Blood Bank Profile</h1>
+        <p class="page-subtitle">Your facility details and configurations.</p>
+      </div>
+      <a href="{{ url_for('bloodbank.profile_setup') }}" class="btn btn-secondary btn-sm">Edit Profile</a>
+    </div>
+
+    <!-- Profile Details Card -->
+    <div class="card-container mb-4">
+      <div class="d-flex gap-3 align-items-start flex-wrap">
+        <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary); border-radius: 50%; font-weight: 600;">
+          B
+        </div>
+        <div class="flex-grow-1">
+          <h2 class="fw-semibold mb-1" style="font-size: 1.25rem;">{{ bloodbank.name }}</h2>
+          <div class="tiny text-muted mb-2">Registered Email: {{ current_user.email }}</div>
+          
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge bg-secondary">{{ bloodbank.county }} County</span>
+          </div>
+
+          <div style="font-size: 0.875rem; color: var(--text);">
+            <div><strong>Registered On:</strong> {{ bloodbank.created_at.strftime('%Y-%m-%d') if bloodbank.created_at else 'N/A' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

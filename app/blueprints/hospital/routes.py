@@ -151,3 +151,13 @@ def confirm_donation():
     flash(f"Donation confirmed for {donor.name}. The request has been marked as fulfilled.", "success")
     return redirect(url_for("hospital.dashboard"))
 
+
+@hospital_bp.route("/profile")
+@role_required("hospital_staff")
+def profile():
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+
+    return render_template("hospital/profile.html", hospital=hospital)
+

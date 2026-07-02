@@ -99,3 +99,13 @@ def fulfill_request(request_id):
     db.session.commit()
     flash("Request marked as fulfilled.", "success")
     return redirect(url_for("bloodbank.dashboard"))
+
+
+@bloodbank_bp.route("/profile")
+@role_required("bloodbank_staff")
+def profile():
+    bloodbank = current_user.bloodbank
+    if not bloodbank:
+        return redirect(url_for("bloodbank.profile_setup"))
+
+    return render_template("bloodbank/profile.html", bloodbank=bloodbank)
