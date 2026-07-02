@@ -18,4 +18,5 @@
 
 - Restricted access for hospital and blood bank roles.
 
-Also implement proper error handling and caching for when there is no internet connection, i don't want my db creds leaking to the frontend. And in the different pages for different roles, there is poor spacing between sections, between input forms and test, so fix that. ALso what if a new user recieves a welcoming email notification when they Register/sign in via email(use smtp for this). 
+Ensure when the profile picture is clicked, it enlarges and can be fully viewed. I also do not like how the profile information in the profile section are arranged relative to the profile pictiures, it's a terrible design, update that so it's similar to my other app; C:\Users\adm\.vscode\Products\Freelancing. Also when a hospital clicks the donopr's page, they shopuld see their profile picture, the same applies to a donor, they should be able to see the hospital's profile picture in full. Also from the hospital side, when I click to view a donor's information it displays as if I'm the donor, this is a poor architecture(I could also see tre notification "You are currently eligible to donate blood!" from the hospital side), fix that, the same applies to the donor side, I dont want to open a Hospital's profile and see how they see it from their side
+

@@ -5,7 +5,7 @@ from app import create_app
 
 class HospitalFlowTests(unittest.TestCase):
     def setUp(self):
-        self.app = create_app("development")
+        self.app = create_app("testing")
         self.app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
         self.client = self.app.test_client()
 
