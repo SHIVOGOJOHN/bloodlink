@@ -30,6 +30,12 @@ def profile_setup():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         county = request.form.get("county", "").strip()
+        subcounty = request.form.get("subcounty", "").strip()
+        ward = request.form.get("ward", "").strip()
+        lat_str = request.form.get("latitude", "").strip()
+        lon_str = request.form.get("longitude", "").strip()
+        latitude = float(lat_str) if lat_str else None
+        longitude = float(lon_str) if lon_str else None
         bio = request.form.get("bio", "").strip()
 
         profile_pic_file = request.files.get("profile_pic")
@@ -51,6 +57,10 @@ def profile_setup():
         if bloodbank:
             bloodbank.name = name
             bloodbank.county = county
+            bloodbank.subcounty = subcounty
+            bloodbank.ward = ward
+            bloodbank.latitude = latitude
+            bloodbank.longitude = longitude
             bloodbank.profile_pic_url = profile_pic_url
             bloodbank.bio = bio
         else:
@@ -58,6 +68,10 @@ def profile_setup():
                 user_id=current_user.id,
                 name=name,
                 county=county,
+                subcounty=subcounty,
+                ward=ward,
+                latitude=latitude,
+                longitude=longitude,
                 profile_pic_url=profile_pic_url,
                 bio=bio,
                 created_at=datetime.utcnow()

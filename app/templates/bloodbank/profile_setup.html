@@ -29,6 +29,27 @@
         </div>
 
         <div class="mb-3">
+          <label for="subcounty" class="form-label">Sub-County</label>
+          <input type="text" id="subcounty" name="subcounty" class="form-control" value="{{ bloodbank.subcounty if bloodbank else '' }}" placeholder="e.g. Eldoret East">
+        </div>
+
+        <div class="mb-3">
+          <label for="ward" class="form-label">Ward / Constituency</label>
+          <input type="text" id="ward" name="ward" class="form-control" value="{{ bloodbank.ward if bloodbank else '' }}" placeholder="e.g. Ainabkoi">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">GPS Geolocation <span class="text-muted">(Optional)</span></label>
+          <div class="input-group mb-2">
+            <input type="text" id="latitude" name="latitude" class="form-control" placeholder="Latitude" value="{{ bloodbank.latitude if bloodbank and bloodbank.latitude is not none else '' }}" readonly>
+            <input type="text" id="longitude" name="longitude" class="form-control" placeholder="Longitude" value="{{ bloodbank.longitude if bloodbank and bloodbank.longitude is not none else '' }}" readonly>
+            <button class="btn btn-outline-primary" type="button" id="btn-get-location">Get GPS Location</button>
+          </div>
+          <div class="tiny text-muted">Use browser geolocation to acquire coordinates on your mobile device/computer.</div>
+        </div>
+
+
+        <div class="mb-3">
           <label for="profile_pic" class="form-label">Logo / Profile Picture <span class="text-muted">(Optional)</span></label>
           <input type="file" id="profile_pic" name="profile_pic" class="form-control" accept="image/*">
           {% if bloodbank and bloodbank.profile_pic_url %}
@@ -39,6 +60,7 @@
         <div class="mb-4">
           <label for="bio" class="form-label">Facility Details <span class="text-muted">(Optional)</span></label>
           <textarea id="bio" name="bio" class="form-control" rows="3" placeholder="Tell donors and hospitals about your blood bank...">{{ bloodbank.bio if bloodbank else '' }}</textarea>
+        </div>
 
         <button type="submit" class="btn btn-primary w-100">Save Blood Bank Profile</button>
       </form>
@@ -46,3 +68,31 @@
   </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('btn-get-location').addEventListener('click', function() {
+  if (navigator.geolocation) {
+    this.disabled = true;
+    const originalText = this.innerText;
+    this.innerText = 'Acquiring...';
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
+        document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+        this.disabled = false;
+        this.innerText = originalText;
+      },
+      (error) => {
+        alert('Error acquiring location: ' + error.message);
+        this.disabled = false;
+        this.innerText = originalText;
+      }
+    );
+  } else {
+    alert('Geolocation is not supported by your browser.');
+  }
+});
+</script>
+{% endblock %}
+

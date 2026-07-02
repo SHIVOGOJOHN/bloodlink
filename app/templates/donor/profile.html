@@ -70,6 +70,24 @@
             <span class="profile-info-label">County</span>
             <span class="profile-info-value">{{ donor.county }}</span>
           </div>
+          {% if donor.subcounty %}
+          <div class="profile-info-item">
+            <span class="profile-info-label">Sub-County</span>
+            <span class="profile-info-value">{{ donor.subcounty }}</span>
+          </div>
+          {% endif %}
+          {% if donor.ward %}
+          <div class="profile-info-item">
+            <span class="profile-info-label">Ward / Constituency</span>
+            <span class="profile-info-value">{{ donor.ward }}</span>
+          </div>
+          {% endif %}
+          {% if donor.latitude is not none and donor.longitude is not none %}
+          <div class="profile-info-item">
+            <span class="profile-info-label">GPS Geolocation</span>
+            <span class="profile-info-value" title="{{ donor.latitude }}, {{ donor.longitude }}">&#x2713; Registered</span>
+          </div>
+          {% endif %}
           {% if current_user.donor and current_user.donor.id == donor.id %}
           <div class="profile-info-item">
             <span class="profile-info-label">Data Consent</span>
@@ -77,6 +95,7 @@
           </div>
           {% endif %}
         </div>
+
 
         {% if donor.bio %}
         <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 16px;">

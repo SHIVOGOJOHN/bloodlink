@@ -86,7 +86,8 @@ def dashboard():
                 if s.blood_type == latest_open_request.blood_type
             )
             # Always run matching so hospital can see donor options
-            matching_results = rank_donors_for_request(latest_open_request.blood_type, hospital.county)
+            matching_results = rank_donors_for_request(latest_open_request.blood_type, hospital)
+
 
     return render_template(
         "hospital/dashboard.html",
@@ -107,6 +108,12 @@ def profile_setup():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         county = request.form.get("county", "").strip()
+        subcounty = request.form.get("subcounty", "").strip()
+        ward = request.form.get("ward", "").strip()
+        lat_str = request.form.get("latitude", "").strip()
+        lon_str = request.form.get("longitude", "").strip()
+        latitude = float(lat_str) if lat_str else None
+        longitude = float(lon_str) if lon_str else None
         contact_phone = request.form.get("contact_phone", "").strip()
         bio = request.form.get("bio", "").strip()
 
@@ -129,6 +136,10 @@ def profile_setup():
         if hospital:
             hospital.name = name
             hospital.county = county
+            hospital.subcounty = subcounty
+            hospital.ward = ward
+            hospital.latitude = latitude
+            hospital.longitude = longitude
             hospital.contact_phone = contact_phone
             hospital.profile_pic_url = profile_pic_url
             hospital.bio = bio
@@ -137,6 +148,10 @@ def profile_setup():
                 user_id=current_user.id,
                 name=name,
                 county=county,
+                subcounty=subcounty,
+                ward=ward,
+                latitude=latitude,
+                longitude=longitude,
                 contact_phone=contact_phone,
                 profile_pic_url=profile_pic_url,
                 bio=bio,

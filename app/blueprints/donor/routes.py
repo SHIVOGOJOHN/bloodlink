@@ -63,6 +63,13 @@ def profile_setup():
         consent_given = request.form.get("consent_given") == "yes"
         bio = request.form.get("bio", "").strip()
 
+        subcounty = request.form.get("subcounty", "").strip()
+        ward = request.form.get("ward", "").strip()
+        lat_str = request.form.get("latitude", "").strip()
+        lon_str = request.form.get("longitude", "").strip()
+        latitude = float(lat_str) if lat_str else None
+        longitude = float(lon_str) if lon_str else None
+
         profile_pic_file = request.files.get("profile_pic")
         profile_pic_url = donor.profile_pic_url if donor else None
         if profile_pic_file and profile_pic_file.filename:
@@ -95,6 +102,10 @@ def profile_setup():
             donor.name = name
             donor.phone = phone
             donor.county = county
+            donor.subcounty = subcounty
+            donor.ward = ward
+            donor.latitude = latitude
+            donor.longitude = longitude
             donor.blood_type = blood_type
             donor.last_donation_date = last_donation_date
             donor.profile_pic_url = profile_pic_url
@@ -105,6 +116,10 @@ def profile_setup():
                 name=name,
                 phone=phone,
                 county=county,
+                subcounty=subcounty,
+                ward=ward,
+                latitude=latitude,
+                longitude=longitude,
                 blood_type=blood_type,
                 last_donation_date=last_donation_date,
                 consent_given=True,

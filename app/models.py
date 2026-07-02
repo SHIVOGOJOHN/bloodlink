@@ -54,6 +54,10 @@ class Donor(db.Model):
     name = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(50), nullable=False)
     county = db.Column(db.String(100), nullable=False)
+    subcounty = db.Column(db.String(100), nullable=True)
+    ward = db.Column(db.String(100), nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     blood_type = db.Column(db.String(10), nullable=False)
     last_donation_date = db.Column(db.Date, nullable=True)
     consent_given = db.Column(db.Boolean, default=False)
@@ -70,6 +74,10 @@ class Hospital(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey(f"{USER_TABLE}.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     county = db.Column(db.String(100), nullable=False)
+    subcounty = db.Column(db.String(100), nullable=True)
+    ward = db.Column(db.String(100), nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     contact_phone = db.Column(db.String(50), nullable=True)
     profile_pic_url = db.Column(db.String(512), nullable=True)
     bio = db.Column(db.Text, nullable=True)
@@ -83,9 +91,14 @@ class BloodBank(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey(f"{USER_TABLE}.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     county = db.Column(db.String(100), nullable=False)
+    subcounty = db.Column(db.String(100), nullable=True)
+    ward = db.Column(db.String(100), nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     profile_pic_url = db.Column(db.String(512), nullable=True)
     bio = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 
 class BloodBankStock(db.Model):

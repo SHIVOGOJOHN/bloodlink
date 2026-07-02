@@ -20,6 +20,7 @@ they did.
 """
 
 import logging
+import math
 from datetime import date
 from typing import Any
 
@@ -744,17 +745,35 @@ def get_distance(county_a: str, county_b: str) -> int:
     return COUNTY_DISTANCE.get(county_a, {}).get(county_b, _UNKNOWN_DISTANCE)
 
 
-def proximity_score(distance_km: int) -> int:
+def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Return exact great-circle distance in km using Haversine formula."""
+    # Radius of the earth in km
+    R = 6371.0
+    
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = R * c
+    return round(distance, 2)
+
+
+def proximity_score(distance_km: float) -> int:
     """Convert a distance in km to a 0-10 proximity score."""
     if distance_km == 0:
         return 10
-    if distance_km <= 25:
-        return 7
+    if distance_km <= 5:
+        return 10
+    if distance_km <= 15:
+        return 8
+    if distance_km <= 30:
+        return 6
     if distance_km <= 80:
-        return 5
-    if distance_km <= 200:
+        return 4
+    if distance_km <= 150:
         return 2
     return 0
+
 
 
 # ---------------------------------------------------------------------------
@@ -868,7 +887,7 @@ def _ai_explanation(
 def score_donor(
     donor: "Donor",
     requested_blood_type: str,
-    hospital_county: str,
+    hospital: "Hospital",
     reference_date: date | None = None,
 ) -> dict[str, Any] | None:
     """
@@ -882,11 +901,11 @@ def score_donor(
       score           — int 0-100
       compat_score    — int (0 or 60)
       elig_score      — int (0 or 30)
-      prox_score      — int (0, 2, 5, 7, or 10)
+      prox_score      — int (0-10)
       compatible      — bool
       eligible        — bool
       days_since_last — int | None
-      distance_km     — int
+      distance_km     — float
       reasons         — list[str]  (breakdown labels visible to judges)
       explanation     — str        (human-readable AI/baseline narrative)
     """
@@ -902,11 +921,25 @@ def score_donor(
     # --- Score components ---
     compat_score = 60
     elig_score   = 30
-    distance_km  = get_distance(hospital_county, donor.county)
-    prox_score   = proximity_score(distance_km)
-    total_score  = compat_score + elig_score + prox_score
+    
+    # Precise GPS location check
+    gps_active = False
+    if (donor.latitude is not None and donor.longitude is not None and
+            hospital.latitude is not None and hospital.longitude is not None):
+        distance_km = calculate_haversine_distance(
+            donor.latitude, donor.longitude,
+            hospital.latitude, hospital.longitude
+        )
+        gps_active = True
+    else:
+        # Fall back to county headquarters distance
+        distance_km = float(get_distance(hospital.county, donor.county))
+
+    prox_score = proximity_score(distance_km)
+    total_score = compat_score + elig_score + prox_score
 
     # --- Breakdown reasons (visible to judges) ---
+    dist_label = f"~{distance_km} km (exact GPS match)" if gps_active else f"~{distance_km} km (county level estimate)"
     reasons: list[str] = [
         f"Blood type {donor.blood_type} is compatible with {requested_blood_type} (+{compat_score} pts)",
         (
@@ -917,14 +950,14 @@ def score_donor(
         (
             f"Same county ({donor.county}) — 0 km (+{prox_score} pts)"
             if distance_km == 0
-            else f"~{distance_km} km from hospital (+{prox_score} pts)"
+            else f"{dist_label} (+{prox_score} pts)"
         ),
     ]
 
     # --- AI narrative ---
     explanation = _ai_explanation(
         donor, requested_blood_type, days_since_last,
-        distance_km, prox_score, compat_score, elig_score, total_score
+        int(distance_km), prox_score, compat_score, elig_score, total_score
     )
 
     return {
@@ -944,7 +977,7 @@ def score_donor(
 
 def rank_donors_for_request(
     requested_blood_type: str,
-    hospital_county: str,
+    hospital: "Hospital",
     reference_date: date | None = None,
 ) -> list[dict[str, Any]]:
     """
@@ -962,7 +995,7 @@ def rank_donors_for_request(
         result = score_donor(
             donor,
             requested_blood_type,
-            hospital_county,
+            hospital,
             reference_date,
         )
         if result is not None:
@@ -970,3 +1003,4 @@ def rank_donors_for_request(
 
     results.sort(key=lambda r: (-r["score"], r["donor"].name))
     return results
+

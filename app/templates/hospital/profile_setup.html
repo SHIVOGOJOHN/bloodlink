@@ -29,6 +29,27 @@
         </div>
 
         <div class="mb-3">
+          <label for="subcounty" class="form-label">Sub-County</label>
+          <input type="text" id="subcounty" name="subcounty" class="form-control" value="{{ hospital.subcounty if hospital else '' }}" placeholder="e.g. Eldoret East">
+        </div>
+
+        <div class="mb-3">
+          <label for="ward" class="form-label">Ward / Constituency</label>
+          <input type="text" id="ward" name="ward" class="form-control" value="{{ hospital.ward if hospital else '' }}" placeholder="e.g. Ainabkoi">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">GPS Geolocation <span class="text-muted">(Optional)</span></label>
+          <div class="input-group mb-2">
+            <input type="text" id="latitude" name="latitude" class="form-control" placeholder="Latitude" value="{{ hospital.latitude if hospital and hospital.latitude is not none else '' }}" readonly>
+            <input type="text" id="longitude" name="longitude" class="form-control" placeholder="Longitude" value="{{ hospital.longitude if hospital and hospital.longitude is not none else '' }}" readonly>
+            <button class="btn btn-outline-primary" type="button" id="btn-get-location">Get GPS Location</button>
+          </div>
+          <div class="tiny text-muted">Use browser geolocation to acquire coordinates on your mobile device/computer.</div>
+        </div>
+
+
+        <div class="mb-3">
           <label for="contact_phone" class="form-label">Contact Phone</label>
           <input type="tel" id="contact_phone" name="contact_phone" class="form-control" value="{{ default_phone }}" placeholder="e.g. 0712345678" required>
         </div>
@@ -52,3 +73,31 @@
   </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('btn-get-location').addEventListener('click', function() {
+  if (navigator.geolocation) {
+    this.disabled = true;
+    const originalText = this.innerText;
+    this.innerText = 'Acquiring...';
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        document.getElementById('latitude').value = position.coords.latitude.toFixed(6);
+        document.getElementById('longitude').value = position.coords.longitude.toFixed(6);
+        this.disabled = false;
+        this.innerText = originalText;
+      },
+      (error) => {
+        alert('Error acquiring location: ' + error.message);
+        this.disabled = false;
+        this.innerText = originalText;
+      }
+    );
+  } else {
+    alert('Geolocation is not supported by your browser.');
+  }
+});
+</script>
+{% endblock %}
+
