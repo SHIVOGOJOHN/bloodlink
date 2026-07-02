@@ -56,7 +56,7 @@
 
         <div class="mb-3">
           <label for="last_donation_date" class="form-label">Last Donation Date <span class="text-muted">(Optional)</span></label>
-          <input type="date" id="last_donation_date" name="last_donation_date" class="form-control" max="{{ None|datetimeformat('%Y-%m-%d') }}">
+          <input type="date" id="last_donation_date" name="last_donation_date" class="form-control">
           <div class="form-text">If you have donated before, please provide the approximate date to help us track eligibility.</div>
         </div>
 
@@ -74,4 +74,15 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const dateInput = document.getElementById('last_donation_date');
+    if (dateInput) {
+      dateInput.max = new Date().toISOString().split('T')[0];
+    }
+  })();
+</script>
 {% endblock %}
