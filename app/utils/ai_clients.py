@@ -122,14 +122,53 @@ class AICascade:
         self.gemini = GeminiClient()
 
     def generate(self, prompt: str, max_tokens: int = 300, temperature: float = 0.4) -> str | None:
+        import hashlib
+        import json
+        import os
+        from flask import current_app
+
+        # Fallback cache path if not in app context
+        try:
+            cache_dir = os.path.join(current_app.instance_path, "cache")
+        except Exception:
+            cache_dir = "instance/cache"
+
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            cache_file = os.path.join(cache_dir, "ai_cache.json")
+        except Exception:
+            cache_file = None
+
+        prompt_hash = hashlib.md5(prompt.encode("utf-8")).hexdigest()
+        cache_data = {}
+
+        if cache_file and os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cache_data = json.load(f)
+            except Exception:
+                pass
+
+        if prompt_hash in cache_data:
+            logger.debug("[AI] Cache hit.")
+            return cache_data[prompt_hash]
+
         result = self.groq.generate(prompt, max_tokens=max_tokens, temperature=temperature)
         if result:
             logger.debug("[AI] Response from Groq.")
-            return result
+        else:
+            result = self.gemini.generate(prompt, max_tokens=max_tokens, temperature=temperature)
+            if result:
+                logger.debug("[AI] Response from Gemini.")
 
-        result = self.gemini.generate(prompt, max_tokens=max_tokens, temperature=temperature)
         if result:
-            logger.debug("[AI] Response from Gemini.")
+            if cache_file:
+                cache_data[prompt_hash] = result
+                try:
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump(cache_data, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    logger.error("Failed to write to AI cache: %s", e)
             return result
 
         logger.warning("[AI] Both Groq and Gemini unavailable — caller should use baseline.")

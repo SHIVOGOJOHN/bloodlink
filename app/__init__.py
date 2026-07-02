@@ -164,6 +164,15 @@ def create_app(config_name=None):
         bloodbank = BloodBank.query.get_or_404(bloodbank_id)
         return render_template("bloodbank/profile.html", bloodbank=bloodbank)
 
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        app.logger.error(f"Internal Server Error: {e}")
+        return render_template("errors/500.html"), 500
+
     return app
 
 

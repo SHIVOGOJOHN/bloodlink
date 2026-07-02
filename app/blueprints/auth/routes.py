@@ -138,6 +138,10 @@ def register():
         db.session.commit()
 
         login_user(user)
+        try:
+            _send_welcome_email(user)
+        except Exception:
+            current_app.logger.exception("Failed to send welcome email")
         flash("Account created successfully.", "success")
         return redirect(url_for(role_dashboard(user.role)))
 
@@ -295,6 +299,10 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
+        try:
+            _send_welcome_email(user)
+        except Exception:
+            current_app.logger.exception("Failed to send Google welcome email")
     else:
         changed = False
         if not user.google_id and profile.get("sub"):

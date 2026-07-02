@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Internal Server Error — BloodLink{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center text-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card-container py-5 my-5">
+      <div style="font-size: 4rem; font-weight: 700; color: var(--red); line-height: 1;" class="mb-3">500</div>
+      <h1 class="page-title mb-2">Temporary Server Error</h1>
+      <p class="text-muted mb-4">An error occurred while processing your request. Please try again later or contact support if the issue persists.</p>
+      
+      <div class="alert alert-warning text-start mb-4 tiny">
+        <strong>Security Note:</strong> Details of this error have been logged securely. No server path, database configuration, or credential details have been exposed to safeguard system integrity.
+      </div>
+
+      <a href="{{ url_for('index') }}" class="btn btn-primary px-4">Go to Homepage</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
