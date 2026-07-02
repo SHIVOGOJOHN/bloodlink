@@ -91,50 +91,56 @@
           Scored out of 100 — Compatibility (60 pts) + Eligibility (30 pts) + Proximity (10 pts).
           Rankings are fully transparent; see each donor's breakdown below.
         </div>
-        <ul class="list-unstyled mb-0">
+        <div class="match-list-scroll">
           {% for match in matching_results %}
-          <li class="py-3 border-bottom">
+          <div class="match-item">
             <div class="d-flex justify-content-between align-items-start gap-3">
-              <div class="flex-grow-1">
-                <!-- Donor name + badge -->
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}" class="fw-semibold text-decoration-none" style="color: var(--primary);">{{ match.donor.name }}</a>
-                  <span class="badge bg-primary">{{ match.score }}/100</span>
-                  {% if match.donor.blood_type == 'O-' %}
-                  <span class="badge bg-danger">Universal Donor</span>
+              <div class="d-flex gap-3 align-items-start flex-grow-1">
+                <!-- Donor avatar thumbnail -->
+                {% if match.donor.profile_pic_url %}
+                  <img src="{{ match.donor.profile_pic_url }}" alt="{{ match.donor.name }}"
+                    style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;margin-top:2px;">
+                {% else %}
+                  <div style="width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:var(--red);flex-shrink:0;margin-top:2px;">
+                    {{ (match.donor.name or '?')[0].upper() }}
+                  </div>
+                {% endif %}
+
+                <div class="flex-grow-1">
+                  <!-- Donor name + badge -->
+                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}" class="fw-semibold text-decoration-none" style="color: var(--primary);">{{ match.donor.name }}</a>
+                    <span class="badge bg-primary">{{ match.score }}/100</span>
+                    {% if match.donor.blood_type == 'O-' %}
+                    <span class="badge bg-danger">Universal Donor</span>
+                    {% endif %}
+                  </div>
+
+                  <!-- Blood type & location -->
+                  <div class="tiny text-muted mb-2">
+                    {{ match.donor.blood_type }} &nbsp;•&nbsp; {{ match.donor.county }}
+                    &nbsp;•&nbsp; ~{{ match.distance_km }} km away
+                  </div>
+
+                  <!-- Score breakdown -->
+                  <div class="d-flex gap-2 flex-wrap mb-2">
+                    <span class="badge bg-secondary" title="Blood type compatibility">Compatibility: {{ match.compat_score }}/60</span>
+                    <span class="badge bg-secondary" title="90-day eligibility rule">Eligibility: {{ match.elig_score }}/30</span>
+                    <span class="badge bg-secondary" title="County proximity score">Proximity: {{ match.prox_score }}/10</span>
+                  </div>
+
+                  <!-- Reason bullets -->
+                  <ul class="mb-2 ps-3" style="font-size: 0.78rem; color: var(--text-muted);">
+                    {% for reason in match.reasons %}
+                    <li>{{ reason }}</li>
+                    {% endfor %}
+                  </ul>
+
+                  <!-- AI narrative -->
+                  {% if match.explanation %}
+                  <div class="tiny text-muted fst-italic">{{ match.explanation }}</div>
                   {% endif %}
                 </div>
-
-                <!-- Blood type & location -->
-                <div class="tiny text-muted mb-2">
-                  {{ match.donor.blood_type }} &nbsp;•&nbsp; {{ match.donor.county }}
-                  &nbsp;•&nbsp; ~{{ match.distance_km }} km away
-                </div>
-
-                <!-- Score breakdown (judges can see the logic) -->
-                <div class="d-flex gap-2 flex-wrap mb-2">
-                  <span class="badge bg-secondary" title="Blood type compatibility">
-                    Compatibility: {{ match.compat_score }}/60
-                  </span>
-                  <span class="badge bg-secondary" title="90-day eligibility rule">
-                    Eligibility: {{ match.elig_score }}/30
-                  </span>
-                  <span class="badge bg-secondary" title="County proximity score">
-                    Proximity: {{ match.prox_score }}/10
-                  </span>
-                </div>
-
-                <!-- Individual reason bullets -->
-                <ul class="mb-2 ps-3" style="font-size: 0.78rem; color: var(--text-muted);">
-                  {% for reason in match.reasons %}
-                  <li>{{ reason }}</li>
-                  {% endfor %}
-                </ul>
-
-                <!-- AI / baseline narrative -->
-                {% if match.explanation %}
-                <div class="tiny text-muted fst-italic">{{ match.explanation }}</div>
-                {% endif %}
               </div>
 
               <!-- Confirm donation button -->
@@ -149,11 +155,11 @@
                 {% endif %}
               </div>
             </div>
-          </li>
+          </div>
           {% else %}
-          <li class="text-muted">No eligible, compatible donors found for your latest open request.</li>
+          <div class="text-muted tiny">No eligible, compatible donors found for your latest open request.</div>
           {% endfor %}
-        </ul>
+        </div>
       </div>
     </div>
   </div>

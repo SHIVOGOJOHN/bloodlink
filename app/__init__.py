@@ -147,7 +147,7 @@ def create_app(config_name=None):
             eligible=eligible,
             days_left=days_left,
             donation_count=donation_count,
-            badges=badges
+            badges=badges,
         )
 
     @app.route("/profile/hospital/<int:hospital_id>")

@@ -1,55 +1,96 @@
 {% extends "base.html" %}
-{% block title %}My Profile — BloodLink{% endblock %}
+{% block title %}
+  {% if current_user.donor and current_user.donor.id == donor.id %}My Profile{% else %}{{ donor.name }} — Donor Profile{% endif %} — BloodLink
+{% endblock %}
 
 {% block content %}
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">&#215;</button>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="Profile picture" onclick="event.stopPropagation()">
+</div>
+
 <div class="row justify-content-center">
-  <div class="col-md-8 col-lg-6">
+  <div class="col-md-8 col-lg-7">
+
+    <!-- Page header row -->
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="page-title">My Profile</h1>
-        <p class="page-subtitle">Your personal details and donation history.</p>
+        <h1 class="page-title">
+          {% if current_user.donor and current_user.donor.id == donor.id %}My Profile{% else %}Donor Profile{% endif %}
+        </h1>
+        <p class="page-subtitle">
+          {% if current_user.donor and current_user.donor.id == donor.id %}Your personal details and donation history.{% else %}Donor details and information.{% endif %}
+        </p>
       </div>
       {% if current_user.donor and current_user.donor.id == donor.id %}
       <a href="{{ url_for('donor.profile_setup') }}" class="btn btn-secondary btn-sm">Edit Profile</a>
       {% endif %}
     </div>
 
-    <!-- Profile Details Card -->
-    <div class="card-container mb-4">
-      <div class="d-flex gap-3 align-items-start flex-wrap">
-        {% if donor.profile_pic_url %}
-          <img src="{{ donor.profile_pic_url }}" alt="Profile" class="flex-shrink-0" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);">
-        {% else %}
-          <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary); border-radius: 50%; font-weight: 600;">
-            {{ (donor.name or current_user.email or 'U')[0].upper() }}
-          </div>
-        {% endif %}
-        <div class="flex-grow-1">
-          <h2 class="fw-semibold mb-1" style="font-size: 1.25rem;">{{ donor.name }}</h2>
-          <div class="tiny text-muted mb-2">Registered Email: {{ donor.user.email }}</div>
-          
-          <div class="d-flex flex-wrap gap-2 mb-3">
+    <!-- Profile Hero Card -->
+    <div class="card-container" style="padding-top: 0; overflow: hidden;">
+      <!-- Cover banner -->
+      <div class="profile-cover"></div>
+
+      <!-- Avatar + name row -->
+      <div style="padding: 0 4px;">
+        <div class="profile-avatar-wrap">
+          {% if donor.profile_pic_url %}
+            <img
+              src="{{ donor.profile_pic_url }}"
+              alt="Profile picture of {{ donor.name }}"
+              class="profile-avatar"
+              id="donor-avatar"
+              onclick="openLightbox('{{ donor.profile_pic_url }}', '{{ donor.name }}')"
+              title="Click to enlarge"
+            >
+          {% else %}
+            <div class="profile-avatar-placeholder">
+              {{ (donor.name or current_user.email or 'U')[0].upper() }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <div class="profile-name">{{ donor.name }}</div>
+          <div class="profile-meta">{{ donor.user.email }}</div>
+          <div class="d-flex flex-wrap gap-2">
             <span class="badge bg-danger">{{ donor.blood_type }}</span>
             <span class="badge bg-secondary">{{ donor.county }} County</span>
           </div>
-
-          <div style="font-size: 0.875rem; color: var(--text);">
-            <div class="mb-2"><strong>Phone:</strong> {{ donor.phone }}</div>
-            <div><strong>Data Consent:</strong> Given on {{ donor.consent_timestamp.strftime('%Y-%m-%d') if donor.consent_timestamp else 'N/A' }}</div>
-          </div>
         </div>
-      </div>
-      {% if donor.bio %}
-        <hr style="margin: 16px 0; border: 0; border-top: 1px solid var(--border);">
-        <div style="font-size: 0.875rem; line-height: 1.5; color: var(--text);">
-          <strong class="d-block mb-1">About Donor:</strong>
+
+        <div class="profile-info-row mb-4">
+          <div class="profile-info-item">
+            <span class="profile-info-label">Phone</span>
+            <span class="profile-info-value">{{ donor.phone or '—' }}</span>
+          </div>
+          <div class="profile-info-item">
+            <span class="profile-info-label">County</span>
+            <span class="profile-info-value">{{ donor.county }}</span>
+          </div>
+          {% if current_user.donor and current_user.donor.id == donor.id %}
+          <div class="profile-info-item">
+            <span class="profile-info-label">Data Consent</span>
+            <span class="profile-info-value">{{ donor.consent_timestamp.strftime('%Y-%m-%d') if donor.consent_timestamp else 'N/A' }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if donor.bio %}
+        <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 16px;">
+        <div style="font-size: 0.875rem; line-height: 1.6; color: var(--text);" class="mb-2">
+          <strong class="d-block mb-1">About:</strong>
           <p class="mb-0 text-muted" style="white-space: pre-line;">{{ donor.bio }}</p>
         </div>
-      {% endif %}
+        {% endif %}
+      </div>
     </div>
 
-    <!-- Eligibility Status Card -->
-    <div class="card-container mb-4">
+    <!-- Eligibility Status — only for the owner -->
+    {% if current_user.donor and current_user.donor.id == donor.id %}
+    <div class="card-container">
       <div class="fw-semibold mb-3">Donation Eligibility</div>
       {% if eligible %}
         <div class="alert alert-success d-flex align-items-center gap-2 mb-0">
@@ -59,14 +100,12 @@
       {% else %}
         <div class="alert alert-warning mb-0">
           <div class="fw-semibold mb-1">Temporary Waiting Period</div>
-          <div class="tiny">
-            Your last donation was less than 90 days ago. To protect your health, you can donate again in <strong>{{ days_left }} days</strong>.
-          </div>
+          <div class="tiny">Your last donation was less than 90 days ago. You can donate again in <strong>{{ days_left }} days</strong>.</div>
         </div>
       {% endif %}
     </div>
 
-    <!-- Badges & Achievements -->
+    <!-- Badges — only for owner -->
     <div class="card-container">
       <div class="fw-semibold mb-3">Your Achievements ({{ badges|length }})</div>
       {% if badges %}
@@ -76,12 +115,27 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="text-muted tiny">
-          Make your first donation and confirm it at the hospital to unlock your first achievement badge!
-        </div>
+        <div class="text-muted tiny">Make your first donation and confirm it at the hospital to unlock your first achievement badge!</div>
       {% endif %}
     </div>
+    {% endif %}
 
   </div>
 </div>
+
+<script>
+function openLightbox(src, name) {
+  const overlay = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  img.src = src;
+  img.alt = name;
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
 {% endblock %}

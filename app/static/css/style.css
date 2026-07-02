@@ -373,9 +373,129 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   .col-md-6 { flex: 0 0 50%; max-width: 50%; }
   .col-md-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
   .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
-  .col-lg-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
-  .col-lg-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
 }
+@media (min-width: 992px) {
+  .col-lg-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+  .col-lg-6 { flex: 0 0 50%; max-width: 50%; }
+  .col-lg-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+  .col-lg-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+}
+
+/* ── Profile hero card ─────────────────────────────────────── */
+.profile-cover {
+  height: 120px;
+  background: linear-gradient(135deg, var(--red) 0%, #7f1d1d 100%);
+  border-radius: var(--radius) var(--radius) 0 0;
+  position: relative;
+  margin: -24px -24px 0 -24px;
+}
+.profile-cover.blue {
+  background: linear-gradient(135deg, var(--blue) 0%, #1e3a5f 100%);
+}
+.profile-avatar-wrap {
+  position: relative;
+  margin-top: -44px;
+  margin-bottom: 12px;
+}
+.profile-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--white);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: block;
+}
+.profile-avatar:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 18px rgba(0,0,0,.28);
+}
+.profile-avatar-placeholder {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 3px solid var(--white);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--red);
+}
+.profile-avatar-placeholder.blue { color: var(--blue); }
+.profile-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 2px; }
+.profile-meta { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px; }
+.profile-info-row { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.875rem; color: var(--text); }
+.profile-info-item { display: flex; flex-direction: column; gap: 2px; }
+.profile-info-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600; }
+.profile-info-value { font-weight: 500; color: var(--text); }
+
+/* ── Scrollable match list ─────────────────────────────────── */
+.match-list-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-right: 4px;
+}
+.match-list-scroll::-webkit-scrollbar { width: 5px; }
+.match-list-scroll::-webkit-scrollbar-track { background: transparent; }
+.match-list-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.match-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.match-item:last-child { border-bottom: none; }
+
+/* ── Lightbox modal ────────────────────────────────────────── */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.lightbox-overlay.active { display: flex; }
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 88vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.5);
+  object-fit: contain;
+  cursor: default;
+  animation: lb-in 0.2s ease;
+}
+@keyframes lb-in {
+  from { transform: scale(0.88); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: rgba(255,255,255,.12);
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,.25); }
 
 @media (max-width: 768px) {
   :root { --nav-h: 58px; }

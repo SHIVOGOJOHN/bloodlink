@@ -1,51 +1,102 @@
 {% extends "base.html" %}
-{% block title %}Blood Bank Profile — BloodLink{% endblock %}
+{% block title %}
+  {% if current_user.bloodbank and current_user.bloodbank.id == bloodbank.id %}My Profile{% else %}{{ bloodbank.name }} — Blood Bank Profile{% endif %} — BloodLink
+{% endblock %}
 
 {% block content %}
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">&#215;</button>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="Blood bank logo" onclick="event.stopPropagation()">
+</div>
+
 <div class="row justify-content-center">
-  <div class="col-md-8 col-lg-6">
+  <div class="col-md-8 col-lg-7">
+
+    <!-- Page header row -->
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="page-title">Blood Bank Profile</h1>
-        <p class="page-subtitle">Your facility details and configurations.</p>
+        <h1 class="page-title">
+          {% if current_user.bloodbank and current_user.bloodbank.id == bloodbank.id %}My Profile{% else %}Blood Bank Profile{% endif %}
+        </h1>
+        <p class="page-subtitle">
+          {% if current_user.bloodbank and current_user.bloodbank.id == bloodbank.id %}Your facility details and configurations.{% else %}Blood bank facility information.{% endif %}
+        </p>
       </div>
       {% if current_user.bloodbank and current_user.bloodbank.id == bloodbank.id %}
       <a href="{{ url_for('bloodbank.profile_setup') }}" class="btn btn-secondary btn-sm">Edit Profile</a>
       {% endif %}
     </div>
 
-    <!-- Profile Details Card -->
-    <div class="card-container mb-4">
-      <div class="d-flex gap-3 align-items-start flex-wrap">
-        {% if bloodbank.profile_pic_url %}
-          <img src="{{ bloodbank.profile_pic_url }}" alt="Logo" class="flex-shrink-0" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);">
-        {% else %}
-          <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary); border-radius: 50%; font-weight: 600;">
-            B
-          </div>
-        {% endif %}
-        <div class="flex-grow-1">
-          <h2 class="fw-semibold mb-1" style="font-size: 1.25rem;">{{ bloodbank.name }}</h2>
-          <div class="tiny text-muted mb-2">Registered Email: {{ bloodbank.user.email }}</div>
-          
-          <div class="d-flex flex-wrap gap-2 mb-3">
+    <!-- Profile Hero Card -->
+    <div class="card-container" style="padding-top: 0; overflow: hidden;">
+      <!-- Cover banner -->
+      <div class="profile-cover"></div>
+
+      <!-- Avatar + name row -->
+      <div style="padding: 0 4px;">
+        <div class="profile-avatar-wrap">
+          {% if bloodbank.profile_pic_url %}
+            <img
+              src="{{ bloodbank.profile_pic_url }}"
+              alt="Logo of {{ bloodbank.name }}"
+              class="profile-avatar"
+              id="bloodbank-avatar"
+              onclick="openLightbox('{{ bloodbank.profile_pic_url }}', '{{ bloodbank.name }}')"
+              title="Click to enlarge"
+            >
+          {% else %}
+            <div class="profile-avatar-placeholder">
+              {{ (bloodbank.name or 'B')[0].upper() }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <div class="profile-name">{{ bloodbank.name }}</div>
+          <div class="profile-meta">{{ bloodbank.user.email }}</div>
+          <div class="d-flex flex-wrap gap-2">
             <span class="badge bg-secondary">{{ bloodbank.county }} County</span>
           </div>
+        </div>
 
-          <div style="font-size: 0.875rem; color: var(--text);">
-            <div><strong>Registered On:</strong> {{ bloodbank.created_at.strftime('%Y-%m-%d') if bloodbank.created_at else 'N/A' }}</div>
+        <div class="profile-info-row mb-4">
+          <div class="profile-info-item">
+            <span class="profile-info-label">County</span>
+            <span class="profile-info-value">{{ bloodbank.county }}</span>
+          </div>
+          <div class="profile-info-item">
+            <span class="profile-info-label">Registered On</span>
+            <span class="profile-info-value">{{ bloodbank.created_at.strftime('%Y-%m-%d') if bloodbank.created_at else 'N/A' }}</span>
           </div>
         </div>
-      </div>
-      {% if bloodbank.bio %}
-        <hr style="margin: 16px 0; border: 0; border-top: 1px solid var(--border);">
-        <div style="font-size: 0.875rem; line-height: 1.5; color: var(--text);">
-          <strong class="d-block mb-1">Facility Details:</strong>
+
+        {% if bloodbank.bio %}
+        <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 16px;">
+        <div style="font-size: 0.875rem; line-height: 1.6; color: var(--text);" class="mb-2">
+          <strong class="d-block mb-1">About this Facility:</strong>
           <p class="mb-0 text-muted" style="white-space: pre-line;">{{ bloodbank.bio }}</p>
         </div>
-      {% endif %}
+        {% endif %}
+      </div>
     </div>
 
   </div>
 </div>
+
+<script>
+function openLightbox(src, name) {
+  const overlay = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  img.src = src;
+  img.alt = name;
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
 {% endblock %}
