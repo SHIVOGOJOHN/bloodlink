@@ -1,6 +1,8 @@
 import unittest
 
 from app import create_app
+from app.extensions import db
+from app.models import BloodBank, BloodRequest, Hospital, User
 
 
 class HospitalFlowTests(unittest.TestCase):
@@ -52,9 +54,6 @@ class HospitalFlowTests(unittest.TestCase):
             self.assertIn("exact GPS match", match_res["reasons"][2])
 
     def test_confirm_receipt_flow(self):
-        from app.models import User, Hospital, BloodRequest
-        from app.extensions import db
-
         with self.app.app_context():
             # Setup hospital user and profile
             user = User(email="hosp_rec@example.com", password_hash="x", full_name="Receipt Hosp", role="hospital_staff")
@@ -90,6 +89,41 @@ class HospitalFlowTests(unittest.TestCase):
         with self.app.app_context():
             updated_req = BloodRequest.query.get(req_id)
             self.assertEqual(updated_req.status, "received")
+
+    def test_hospital_dashboard_links_fulfilled_bank_profile(self):
+        with self.app.app_context():
+            hospital_user = User(email="hosp_profile@example.com", password_hash="x", full_name="Profile Hosp", role="hospital_staff")
+            bank_user = User(email="bank_profile@example.com", password_hash="x", full_name="Profile Bank", role="bloodbank_staff")
+            db.session.add_all([hospital_user, bank_user])
+            db.session.flush()
+            hospital_user_id = hospital_user.id
+
+            hospital = Hospital(user_id=hospital_user.id, name="Profile Hospital", county="Nairobi", contact_phone="0712345670")
+            bloodbank = BloodBank(user_id=bank_user.id, name="Profile Blood Bank", county="Nairobi")
+            db.session.add_all([hospital, bloodbank])
+            db.session.flush()
+            bloodbank_id = bloodbank.id
+
+            req = BloodRequest(
+                hospital_id=hospital.id,
+                blood_type="A-",
+                units_needed=2,
+                urgency_level="normal",
+                status="dispatched",
+                fulfilled_by_bloodbank_id=bloodbank.id,
+            )
+            db.session.add(req)
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session["_user_id"] = str(hospital_user_id)
+            session["_fresh"] = True
+
+        response = self.client.get("/hospital/", follow_redirects=False)
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn(f"/profile/bloodbank/{bloodbank_id}", html)
+        self.assertIn("View profile", html)
 
 
 if __name__ == "__main__":

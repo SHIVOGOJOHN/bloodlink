@@ -14,10 +14,9 @@
 
 - Also no emojis in my app, not even one, use only svgs and icons as in my other app; C:\Users\adm\.vscode\Products\Freelancing
 
-- For the donors by a county-distance ranking, you need to implement mobile phone location access, or other means to get the exact location of an individual(eg by subcounty, or even ward/constituency level). This would be better than county level because some are too big. Update the donor and other profiles to include the updated/required fields.
+- For the donors by a county-distance ranking, you need to implement mobile phone location access, or other means to get the exact location of an individual(eg by subcounty, or ward, or constituency level). This would be better than county level because some Counties are too big, which beats the whole point of emergency blood. Update the donor and other profiles to include the updated/required fields.
 
 - Restricted access for hospital and blood bank roles.
 
-Ensure when the profile picture is clicked, it enlarges and can be fully viewed. I also do not like how the profile information in the profile section are arranged relative to the profile pictiures, it's a terrible design, update that so it's similar to my other app; C:\Users\adm\.vscode\Products\Freelancing. Also when a hospital clicks the donopr's page, they shopuld see their profile picture, the same applies to a donor, they should be able to see the hospital's profile picture in full. Also from the hospital side, when I click to view a donor's information it displays as if I'm the donor, this is a poor architecture(I could also see tre notification "You are currently eligible to donate blood!" from the hospital side), fix that, the same applies to the donor side, I dont want to open a Hospital's profile and see how they see it from their side
 
-Also in the section "Top matches for your latest open request" there is no spacing between the parties listed, fix that, also another concern is what happens when there are too many people in this list/section, on pc will this section be too lobg and overstrech below the "Create blood request"? you need to fix that as well with the correct architecture, be it a dropdown or any other way you deem fit
+a Partner With Us section. yoiu can be contacted via a contact form, etc.
