@@ -73,34 +73,56 @@ def dashboard():
 @hospital_bp.route("/profile-setup", methods=["GET", "POST"])
 @role_required("hospital_staff")
 def profile_setup():
-    if current_user.hospital:
-        return redirect(url_for("hospital.dashboard"))
+    hospital = current_user.hospital
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         county = request.form.get("county", "").strip()
         contact_phone = request.form.get("contact_phone", "").strip()
+        bio = request.form.get("bio", "").strip()
+
+        profile_pic_file = request.files.get("profile_pic")
+        profile_pic_url = hospital.profile_pic_url if hospital else None
+        if profile_pic_file and profile_pic_file.filename:
+            import uuid
+            ext = profile_pic_file.filename.split(".")[-1]
+            fname = f"{uuid.uuid4().hex}.{ext}"
+            file_bytes = profile_pic_file.read()
+            from app.utils.github_cdn import upload_profile_pic
+            uploaded_url = upload_profile_pic(file_bytes, fname)
+            if uploaded_url:
+                profile_pic_url = uploaded_url
 
         if not name or not county:
             flash("Please fill in all required fields.", "warning")
-            return render_template("hospital/profile_setup.html")
+            return render_template("hospital/profile_setup.html", hospital=hospital)
 
-        hospital = Hospital(
-            user_id=current_user.id,
-            name=name,
-            county=county,
-            contact_phone=contact_phone,
-            created_at=datetime.utcnow()
-        )
-        db.session.add(hospital)
+        if hospital:
+            hospital.name = name
+            hospital.county = county
+            hospital.contact_phone = contact_phone
+            hospital.profile_pic_url = profile_pic_url
+            hospital.bio = bio
+        else:
+            hospital = Hospital(
+                user_id=current_user.id,
+                name=name,
+                county=county,
+                contact_phone=contact_phone,
+                profile_pic_url=profile_pic_url,
+                bio=bio,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(hospital)
+            
         db.session.commit()
         
-        flash("Hospital profile setup complete! Welcome to your dashboard.", "success")
-        return redirect(url_for("hospital.dashboard"))
+        flash("Hospital profile updated successfully!", "success")
+        return redirect(url_for("hospital.profile"))
 
-    default_phone = current_user.phone or ""
-    default_name = current_user.full_name or ""
-    return render_template("hospital/profile_setup.html", default_phone=default_phone, default_name=default_name)
+    default_phone = hospital.contact_phone if hospital else (current_user.phone or "")
+    default_name = hospital.name if hospital else (current_user.full_name or "")
+    return render_template("hospital/profile_setup.html", hospital=hospital, default_phone=default_phone, default_name=default_name)
 
 
 @hospital_bp.route("/confirm-donation", methods=["POST"])

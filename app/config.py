@@ -54,6 +54,9 @@ class Config:
     DARAJA_CONSUMER_SECRET = os.getenv("DARAJA_CONSUMER_SECRET", "")
     DARAJA_INITIATOR_NAME = os.getenv("DARAJA_INITIATOR_NAME", "")
     DARAJA_SECURITY_CREDENTIAL = os.getenv("DARAJA_SECURITY_CREDENTIAL", "")
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip()
+    GITHUB_REPO = os.getenv("GITHUB_REPO", "").strip()
+    GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main").strip()
     SEED_DATABASE_ON_INIT = True
 
     @staticmethod

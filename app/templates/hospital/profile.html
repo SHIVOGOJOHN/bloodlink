@@ -9,18 +9,24 @@
         <h1 class="page-title">Hospital Profile</h1>
         <p class="page-subtitle">Your facility details and configurations.</p>
       </div>
+      {% if current_user.hospital and current_user.hospital.id == hospital.id %}
       <a href="{{ url_for('hospital.profile_setup') }}" class="btn btn-secondary btn-sm">Edit Profile</a>
+      {% endif %}
     </div>
 
     <!-- Profile Details Card -->
     <div class="card-container mb-4">
       <div class="d-flex gap-3 align-items-start flex-wrap">
-        <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--blue-light); color: var(--blue); border-radius: 50%; font-weight: 600;">
-          H
-        </div>
+        {% if hospital.profile_pic_url %}
+          <img src="{{ hospital.profile_pic_url }}" alt="Logo" class="flex-shrink-0" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);">
+        {% else %}
+          <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--blue-light); color: var(--blue); border-radius: 50%; font-weight: 600;">
+            H
+          </div>
+        {% endif %}
         <div class="flex-grow-1">
           <h2 class="fw-semibold mb-1" style="font-size: 1.25rem;">{{ hospital.name }}</h2>
-          <div class="tiny text-muted mb-2">Registered Email: {{ current_user.email }}</div>
+          <div class="tiny text-muted mb-2">Registered Email: {{ hospital.user.email }}</div>
           
           <div class="d-flex flex-wrap gap-2 mb-3">
             <span class="badge bg-secondary">{{ hospital.county }} County</span>
@@ -32,6 +38,13 @@
           </div>
         </div>
       </div>
+      {% if hospital.bio %}
+        <hr style="margin: 16px 0; border: 0; border-top: 1px solid var(--border);">
+        <div style="font-size: 0.875rem; line-height: 1.5; color: var(--text);">
+          <strong class="d-block mb-1">Facility Details:</strong>
+          <p class="mb-0 text-muted" style="white-space: pre-line;">{{ hospital.bio }}</p>
+        </div>
+      {% endif %}
     </div>
 
   </div>

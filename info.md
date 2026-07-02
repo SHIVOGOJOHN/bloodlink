@@ -15,3 +15,7 @@
 - Also no emojis in my app, not even one, use only svgs and icons as in my other app; C:\Users\adm\.vscode\Products\Freelancing
 
 - For the donors by a county-distance ranking, you need to implement mobile phone location access, or other means to get the exact location of an individual(eg by subcounty, or even ward/constituency level). This would be better than county level because some are too big. Update the donor and other profiles to include the updated/required fields.
+
+- Restricted access for hospital and blood bank roles.
+
+Also implement proper error handling and caching for when there is no internet connection, i don't want my db creds leaking to the frontend. And in the different pages for different roles, there is poor spacing between sections, between input forms and test, so fix that. ALso what if a new user recieves a welcoming email notification when they Register/sign in via email(use smtp for this). 

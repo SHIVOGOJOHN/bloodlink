@@ -31,8 +31,12 @@
           {% if current_user.is_authenticated %}
             {% set role_labels = {'donor': 'Donor', 'hospital_staff': 'Hospital staff', 'bloodbank_staff': 'Blood bank staff', 'admin': 'Admin'} %}
             {% set dashboard_routes = {'donor': 'donor.dashboard', 'hospital_staff': 'hospital.dashboard', 'bloodbank_staff': 'bloodbank.dashboard', 'admin': 'admin.dashboard'} %}
+            {% set profile_routes = {'donor': 'donor.profile', 'hospital_staff': 'hospital.profile', 'bloodbank_staff': 'bloodbank.profile'} %}
             {% if current_user.role in dashboard_routes %}
               <a href="{{ url_for(dashboard_routes[current_user.role]) }}">Dashboard</a>
+            {% endif %}
+            {% if current_user.role in profile_routes %}
+              <a href="{{ url_for(profile_routes[current_user.role]) }}">My Profile</a>
             {% endif %}
             <span class="role-pill">{{ role_labels.get(current_user.role, current_user.role.replace('_', ' ')|title) }}</span>
             <span class="nav-avatar">{{ (current_user.full_name or current_user.email or 'U')[0].upper() }}</span>
@@ -63,12 +67,16 @@
           {% if current_user.is_authenticated %}
             {% set role_labels = {'donor': 'Donor', 'hospital_staff': 'Hospital staff', 'bloodbank_staff': 'Blood bank staff', 'admin': 'Admin'} %}
             {% set dashboard_routes = {'donor': 'donor.dashboard', 'hospital_staff': 'hospital.dashboard', 'bloodbank_staff': 'bloodbank.dashboard', 'admin': 'admin.dashboard'} %}
+            {% set profile_routes = {'donor': 'donor.profile', 'hospital_staff': 'hospital.profile', 'bloodbank_staff': 'bloodbank.profile'} %}
             <div class="mobile-role-summary">
               <span class="role-pill">{{ role_labels.get(current_user.role, current_user.role.replace('_', ' ')|title) }}</span>
               <span class="text-sm text-muted">{{ current_user.email }}</span>
             </div>
             {% if current_user.role in dashboard_routes %}
               <a href="{{ url_for(dashboard_routes[current_user.role]) }}" class="mobile-drawer-link">Dashboard</a>
+            {% endif %}
+            {% if current_user.role in profile_routes %}
+              <a href="{{ url_for(profile_routes[current_user.role]) }}" class="mobile-drawer-link">My Profile</a>
             {% endif %}
             <a href="{{ url_for('auth.logout') }}" class="mobile-drawer-link">Log out</a>
           {% else %}

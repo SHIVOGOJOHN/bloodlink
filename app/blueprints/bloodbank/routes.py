@@ -25,31 +25,52 @@ def dashboard():
 @bloodbank_bp.route("/profile-setup", methods=["GET", "POST"])
 @role_required("bloodbank_staff")
 def profile_setup():
-    if current_user.bloodbank:
-        return redirect(url_for("bloodbank.dashboard"))
+    bloodbank = current_user.bloodbank
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         county = request.form.get("county", "").strip()
+        bio = request.form.get("bio", "").strip()
+
+        profile_pic_file = request.files.get("profile_pic")
+        profile_pic_url = bloodbank.profile_pic_url if bloodbank else None
+        if profile_pic_file and profile_pic_file.filename:
+            import uuid
+            ext = profile_pic_file.filename.split(".")[-1]
+            fname = f"{uuid.uuid4().hex}.{ext}"
+            file_bytes = profile_pic_file.read()
+            from app.utils.github_cdn import upload_profile_pic
+            uploaded_url = upload_profile_pic(file_bytes, fname)
+            if uploaded_url:
+                profile_pic_url = uploaded_url
 
         if not name or not county:
             flash("Please fill in all required fields.", "warning")
-            return render_template("bloodbank/profile_setup.html")
+            return render_template("bloodbank/profile_setup.html", bloodbank=bloodbank)
 
-        bloodbank = BloodBank(
-            user_id=current_user.id,
-            name=name,
-            county=county,
-            created_at=datetime.utcnow()
-        )
-        db.session.add(bloodbank)
+        if bloodbank:
+            bloodbank.name = name
+            bloodbank.county = county
+            bloodbank.profile_pic_url = profile_pic_url
+            bloodbank.bio = bio
+        else:
+            bloodbank = BloodBank(
+                user_id=current_user.id,
+                name=name,
+                county=county,
+                profile_pic_url=profile_pic_url,
+                bio=bio,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(bloodbank)
+            
         db.session.commit()
         
-        flash("Blood bank profile setup complete! Welcome to your dashboard.", "success")
-        return redirect(url_for("bloodbank.dashboard"))
+        flash("Blood bank profile updated successfully!", "success")
+        return redirect(url_for("bloodbank.profile"))
 
-    default_name = current_user.full_name or ""
-    return render_template("bloodbank/profile_setup.html", default_name=default_name)
+    default_name = bloodbank.name if bloodbank else (current_user.full_name or "")
+    return render_template("bloodbank/profile_setup.html", bloodbank=bloodbank, default_name=default_name)
 
 
 @bloodbank_bp.route("/stock", methods=["POST"])

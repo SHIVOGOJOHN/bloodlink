@@ -89,6 +89,81 @@ def create_app(config_name=None):
     def privacy():
         return render_template("policy/privacy.html")
 
+    @app.route("/cdn/profile_pics/<path:filename>")
+    def cdn_profile_pics(filename):
+        """Proxy profile pictures from private GitHub repository."""
+        token = app.config.get("GITHUB_TOKEN", "").strip()
+        repo = app.config.get("GITHUB_REPO", "").strip()
+        branch = app.config.get("GITHUB_BRANCH", "main").strip()
+        
+        if not token or not repo:
+            from flask import abort
+            abort(404)
+            
+        import requests
+        from flask import make_response, abort
+        
+        url = f"https://raw.githubusercontent.com/{repo}/{branch}/profile_pics/{filename}"
+        headers = {"Authorization": f"token {token}"}
+        
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                resp = make_response(r.content)
+                resp.headers['Content-Type'] = r.headers.get('Content-Type', 'image/jpeg')
+                resp.headers['Cache-Control'] = 'public, max-age=86400'
+                return resp
+            else:
+                abort(404)
+        except Exception:
+            abort(404)
+
+    from flask_login import login_required
+
+    @app.route("/profile/donor/<int:donor_id>")
+    @login_required
+    def public_donor_profile(donor_id):
+        from app.models import Donor
+        from app.utils.matching import is_eligible
+        
+        donor = Donor.query.get_or_404(donor_id)
+        eligible, days_since = is_eligible(donor)
+        days_left = max(0, 90 - days_since) if days_since is not None else 0
+        
+        # Unlocked badges count
+        from app.models import DonationRecord
+        donation_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
+        badges = []
+        if donation_count >= 1:
+            badges.append("First Drop")
+        if donation_count >= 5:
+            badges.append("Life Saver")
+        if donation_count >= 10:
+            badges.append("Blood Hero")
+            
+        return render_template(
+            "donor/profile.html",
+            donor=donor,
+            eligible=eligible,
+            days_left=days_left,
+            donation_count=donation_count,
+            badges=badges
+        )
+
+    @app.route("/profile/hospital/<int:hospital_id>")
+    @login_required
+    def public_hospital_profile(hospital_id):
+        from app.models import Hospital
+        hospital = Hospital.query.get_or_404(hospital_id)
+        return render_template("hospital/profile.html", hospital=hospital)
+
+    @app.route("/profile/bloodbank/<int:bloodbank_id>")
+    @login_required
+    def public_bloodbank_profile(bloodbank_id):
+        from app.models import BloodBank
+        bloodbank = BloodBank.query.get_or_404(bloodbank_id)
+        return render_template("bloodbank/profile.html", bloodbank=bloodbank)
+
     return app
 
 

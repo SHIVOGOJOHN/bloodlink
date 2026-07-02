@@ -58,6 +58,8 @@ class Donor(db.Model):
     last_donation_date = db.Column(db.Date, nullable=True)
     consent_given = db.Column(db.Boolean, default=False)
     consent_timestamp = db.Column(db.DateTime, nullable=True)
+    profile_pic_url = db.Column(db.String(512), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -69,6 +71,8 @@ class Hospital(db.Model):
     name = db.Column(db.String(255), nullable=False)
     county = db.Column(db.String(100), nullable=False)
     contact_phone = db.Column(db.String(50), nullable=True)
+    profile_pic_url = db.Column(db.String(512), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -79,6 +83,8 @@ class BloodBank(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey(f"{USER_TABLE}.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     county = db.Column(db.String(100), nullable=False)
+    profile_pic_url = db.Column(db.String(512), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -104,6 +110,8 @@ class BloodRequest(db.Model):
     status = db.Column(db.String(50), default="open")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    hospital = db.relationship("Hospital", backref=db.backref("requests", lazy=True))
+
 
 class DonationRecord(db.Model):
     __tablename__ = table_name("donation_records")
@@ -116,6 +124,10 @@ class DonationRecord(db.Model):
     status = db.Column(db.String(50), default="confirmed")
     confirmed_at = db.Column(db.DateTime, default=datetime.utcnow)
     confirmed_by_user_id = db.Column(db.Integer, db.ForeignKey(f"{USER_TABLE}.id"), nullable=True)
+
+    donor = db.relationship("Donor", backref=db.backref("donations", lazy=True))
+    hospital = db.relationship("Hospital", backref=db.backref("donations", lazy=True))
+    blood_request = db.relationship("BloodRequest", backref=db.backref("records", lazy=True))
 
 
 class Notification(db.Model):

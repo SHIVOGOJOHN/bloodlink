@@ -9,18 +9,24 @@
         <h1 class="page-title">My Profile</h1>
         <p class="page-subtitle">Your personal details and donation history.</p>
       </div>
+      {% if current_user.donor and current_user.donor.id == donor.id %}
       <a href="{{ url_for('donor.profile_setup') }}" class="btn btn-secondary btn-sm">Edit Profile</a>
+      {% endif %}
     </div>
 
     <!-- Profile Details Card -->
     <div class="card-container mb-4">
       <div class="d-flex gap-3 align-items-start flex-wrap">
-        <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary); border-radius: 50%; font-weight: 600;">
-          {{ (donor.name or current_user.email or 'U')[0].upper() }}
-        </div>
+        {% if donor.profile_pic_url %}
+          <img src="{{ donor.profile_pic_url }}" alt="Profile" class="flex-shrink-0" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);">
+        {% else %}
+          <div class="avatar-placeholder flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary); border-radius: 50%; font-weight: 600;">
+            {{ (donor.name or current_user.email or 'U')[0].upper() }}
+          </div>
+        {% endif %}
         <div class="flex-grow-1">
           <h2 class="fw-semibold mb-1" style="font-size: 1.25rem;">{{ donor.name }}</h2>
-          <div class="tiny text-muted mb-2">Registered Email: {{ current_user.email }}</div>
+          <div class="tiny text-muted mb-2">Registered Email: {{ donor.user.email }}</div>
           
           <div class="d-flex flex-wrap gap-2 mb-3">
             <span class="badge bg-danger">{{ donor.blood_type }}</span>
@@ -28,11 +34,18 @@
           </div>
 
           <div style="font-size: 0.875rem; color: var(--text);">
-            <div class="mb-2"><strong>Phone:</strong> {{ donor.contact_phone }}</div>
+            <div class="mb-2"><strong>Phone:</strong> {{ donor.phone }}</div>
             <div><strong>Data Consent:</strong> Given on {{ donor.consent_timestamp.strftime('%Y-%m-%d') if donor.consent_timestamp else 'N/A' }}</div>
           </div>
         </div>
       </div>
+      {% if donor.bio %}
+        <hr style="margin: 16px 0; border: 0; border-top: 1px solid var(--border);">
+        <div style="font-size: 0.875rem; line-height: 1.5; color: var(--text);">
+          <strong class="d-block mb-1">About Donor:</strong>
+          <p class="mb-0 text-muted" style="white-space: pre-line;">{{ donor.bio }}</p>
+        </div>
+      {% endif %}
     </div>
 
     <!-- Eligibility Status Card -->

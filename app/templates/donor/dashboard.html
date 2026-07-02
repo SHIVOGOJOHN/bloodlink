@@ -60,7 +60,15 @@
       {% for request in active_requests %}
       <li class="py-2 border-bottom">
         <div class="fw-semibold">{{ request.blood_type }} • {{ request.units_needed }} units</div>
-        <div class="tiny text-muted">{{ request.urgency_level }} • Status {{ request.status }}</div>
+        <div class="tiny text-muted">
+          {% if request.hospital %}
+            Requested by: <a href="{{ url_for('public_hospital_profile', hospital_id=request.hospital.id) }}" class="text-decoration-none" style="color: var(--primary);">{{ request.hospital.name }}</a>
+            • County: {{ request.hospital.county }}
+          {% else %}
+            Requested by Hospital ID {{ request.hospital_id }}
+          {% endif %}
+          • Urgency: {{ request.urgency_level|capitalize }}
+        </div>
       </li>
       {% else %}
       <li class="text-muted">No requests available yet.</li>

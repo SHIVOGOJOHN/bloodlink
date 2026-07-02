@@ -52,8 +52,7 @@ def dashboard():
 @donor_bp.route("/profile-setup", methods=["GET", "POST"])
 @role_required("donor")
 def profile_setup():
-    if current_user.donor:
-        return redirect(url_for("donor.dashboard"))
+    donor = current_user.donor
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -62,14 +61,27 @@ def profile_setup():
         blood_type = request.form.get("blood_type", "").strip()
         last_donation_date_str = request.form.get("last_donation_date", "").strip()
         consent_given = request.form.get("consent_given") == "yes"
+        bio = request.form.get("bio", "").strip()
+
+        profile_pic_file = request.files.get("profile_pic")
+        profile_pic_url = donor.profile_pic_url if donor else None
+        if profile_pic_file and profile_pic_file.filename:
+            import uuid
+            ext = profile_pic_file.filename.split(".")[-1]
+            fname = f"{uuid.uuid4().hex}.{ext}"
+            file_bytes = profile_pic_file.read()
+            from app.utils.github_cdn import upload_profile_pic
+            uploaded_url = upload_profile_pic(file_bytes, fname)
+            if uploaded_url:
+                profile_pic_url = uploaded_url
 
         if not name or not phone or not county or not blood_type:
             flash("Please fill in all required fields.", "warning")
-            return render_template("donor/profile_setup.html")
+            return render_template("donor/profile_setup.html", donor=donor)
             
-        if not consent_given:
+        if not donor and not consent_given:
             flash("You must agree to the data privacy policy to continue.", "danger")
-            return render_template("donor/profile_setup.html")
+            return render_template("donor/profile_setup.html", donor=donor)
 
         last_donation_date = None
         if last_donation_date_str:
@@ -77,29 +89,41 @@ def profile_setup():
                 last_donation_date = datetime.strptime(last_donation_date_str, "%Y-%m-%d").date()
             except ValueError:
                 flash("Invalid date format. Use YYYY-MM-DD.", "warning")
-                return render_template("donor/profile_setup.html")
+                return render_template("donor/profile_setup.html", donor=donor)
 
-        donor = Donor(
-            user_id=current_user.id,
-            name=name,
-            phone=phone,
-            county=county,
-            blood_type=blood_type,
-            last_donation_date=last_donation_date,
-            consent_given=True,
-            consent_timestamp=datetime.utcnow()
-        )
-        db.session.add(donor)
+        if donor:
+            donor.name = name
+            donor.phone = phone
+            donor.county = county
+            donor.blood_type = blood_type
+            donor.last_donation_date = last_donation_date
+            donor.profile_pic_url = profile_pic_url
+            donor.bio = bio
+        else:
+            donor = Donor(
+                user_id=current_user.id,
+                name=name,
+                phone=phone,
+                county=county,
+                blood_type=blood_type,
+                last_donation_date=last_donation_date,
+                consent_given=True,
+                consent_timestamp=datetime.utcnow(),
+                profile_pic_url=profile_pic_url,
+                bio=bio
+            )
+            db.session.add(donor)
+            
         db.session.commit()
         
-        flash("Profile setup complete! Welcome to your dashboard.", "success")
-        return redirect(url_for("donor.dashboard"))
+        flash("Profile updated successfully!", "success")
+        return redirect(url_for("donor.profile"))
 
     # If the user already provided full name and phone during registration, use them as defaults
-    default_name = current_user.full_name or ""
-    default_phone = current_user.phone or ""
+    default_name = donor.name if donor else (current_user.full_name or "")
+    default_phone = donor.phone if donor else (current_user.phone or "")
 
-    return render_template("donor/profile_setup.html", default_name=default_name, default_phone=default_phone)
+    return render_template("donor/profile_setup.html", donor=donor, default_name=default_name, default_phone=default_phone)
 
 
 @donor_bp.route("/profile")

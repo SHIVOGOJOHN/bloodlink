@@ -10,7 +10,7 @@
     </div>
 
     <div class="card-container">
-      <form method="POST" action="{{ url_for('bloodbank.profile_setup') }}">
+      <form method="POST" action="{{ url_for('bloodbank.profile_setup') }}" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         
         <div class="mb-3">
@@ -23,10 +23,22 @@
           <select id="county" name="county" class="form-select" required>
             <option value="" disabled selected>Select your county</option>
             {% for county in kenya_counties %}
-            <option value="{{ county }}">{{ county }}</option>
+            <option value="{{ county }}" {% if bloodbank and bloodbank.county == county %}selected{% endif %}>{{ county }}</option>
             {% endfor %}
           </select>
         </div>
+
+        <div class="mb-3">
+          <label for="profile_pic" class="form-label">Logo / Profile Picture <span class="text-muted">(Optional)</span></label>
+          <input type="file" id="profile_pic" name="profile_pic" class="form-control" accept="image/*">
+          {% if bloodbank and bloodbank.profile_pic_url %}
+            <div class="tiny text-muted mt-1">Current logo is already set. Upload a new one to replace it.</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-4">
+          <label for="bio" class="form-label">Facility Details <span class="text-muted">(Optional)</span></label>
+          <textarea id="bio" name="bio" class="form-control" rows="3" placeholder="Tell donors and hospitals about your blood bank...">{{ bloodbank.bio if bloodbank else '' }}</textarea>
 
         <button type="submit" class="btn btn-primary w-100">Save Blood Bank Profile</button>
       </form>

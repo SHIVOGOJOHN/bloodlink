@@ -98,7 +98,7 @@
               <div class="flex-grow-1">
                 <!-- Donor name + badge -->
                 <div class="d-flex align-items-center gap-2 mb-1">
-                  <span class="fw-semibold">{{ match.donor.name }}</span>
+                  <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}" class="fw-semibold text-decoration-none" style="color: var(--primary);">{{ match.donor.name }}</a>
                   <span class="badge bg-primary">{{ match.score }}/100</span>
                   {% if match.donor.blood_type == 'O-' %}
                   <span class="badge bg-danger">Universal Donor</span>
