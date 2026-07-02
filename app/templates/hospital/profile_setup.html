@@ -22,14 +22,9 @@
           <label for="county" class="form-label">County</label>
           <select id="county" name="county" class="form-select" required>
             <option value="" disabled selected>Select your county</option>
-            <option value="Nairobi">Nairobi</option>
-            <option value="Kiambu">Kiambu</option>
-            <option value="Machakos">Machakos</option>
-            <option value="Kajiado">Kajiado</option>
-            <option value="Nakuru">Nakuru</option>
-            <option value="Uasin Gishu">Uasin Gishu</option>
-            <option value="Kisumu">Kisumu</option>
-            <option value="Mombasa">Mombasa</option>
+            {% for county in kenya_counties %}
+            <option value="{{ county }}">{{ county }}</option>
+            {% endfor %}
           </select>
         </div>
 

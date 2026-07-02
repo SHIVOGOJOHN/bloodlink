@@ -68,6 +68,11 @@ def create_app(config_name=None):
 
     init_database(app)
 
+    @app.context_processor
+    def inject_counties():
+        from app.utils.matching import COUNTY_DISTANCE
+        return {"kenya_counties": sorted(COUNTY_DISTANCE.keys())}
+
     @app.route("/")
     def index():
         return render_template("index.html")
