@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Hospital Profile Setup — BloodLink{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="page-header text-center">
+      <h1 class="page-title">Hospital Profile Setup</h1>
+      <p class="page-subtitle">Provide your facility details to start requesting blood.</p>
+    </div>
+
+    <div class="card-container">
+      <form method="POST" action="{{ url_for('hospital.profile_setup') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <div class="mb-3">
+          <label for="name" class="form-label">Hospital Name</label>
+          <input type="text" id="name" name="name" class="form-control" value="{{ default_name }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="county" class="form-label">County</label>
+          <select id="county" name="county" class="form-select" required>
+            <option value="" disabled selected>Select your county</option>
+            <option value="Nairobi">Nairobi</option>
+            <option value="Kiambu">Kiambu</option>
+            <option value="Machakos">Machakos</option>
+            <option value="Kajiado">Kajiado</option>
+            <option value="Nakuru">Nakuru</option>
+            <option value="Uasin Gishu">Uasin Gishu</option>
+            <option value="Kisumu">Kisumu</option>
+            <option value="Mombasa">Mombasa</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label for="contact_phone" class="form-label">Contact Phone</label>
+          <input type="tel" id="contact_phone" name="contact_phone" class="form-control" value="{{ default_phone }}" placeholder="e.g. 0712345678" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Save Hospital Profile</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

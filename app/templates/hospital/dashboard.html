@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Hospital Dashboard — BloodLink{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1 class="page-title">Hospital Dashboard</h1>
+      <p class="page-subtitle">Review stock, create requests, and view matched donors.</p>
+    </div>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if hospital %}
+  <div class="card-container mb-4">
+    <div class="fw-semibold mb-2">Hospital Profile</div>
+    <div>{{ hospital.name }} • {{ hospital.county }}</div>
+    <div class="tiny text-muted">Contact: {{ hospital.contact_phone }}</div>
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Create Request -->
+    <div class="col-md-5">
+      <div class="card-container h-100">
+        <div class="fw-semibold mb-3">Create blood request</div>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Blood type</label>
+            <select name="blood_type" class="form-select" required>
+              <option value="" disabled selected>Select blood type</option>
+              <option>O-</option><option>O+</option>
+              <option>A-</option><option>A+</option>
+              <option>B-</option><option>B+</option>
+              <option>AB-</option><option>AB+</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Units needed</label>
+            <input type="number" name="units_needed" class="form-control" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Urgency</label>
+            <select name="urgency_level" class="form-select">
+              <option value="urgent">Urgent</option>
+              <option value="normal">Normal</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Submit request</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Active Requests & Matches -->
+    <div class="col-md-7">
+      <div class="card-container mb-4">
+        <div class="fw-semibold mb-3">Your recent requests</div>
+        <ul class="list-unstyled mb-0">
+          {% for request in requests %}
+          <li class="py-2 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="fw-semibold">{{ request.blood_type }}</span> • {{ request.units_needed }} units
+                {% if request.status == 'open' %}
+                <span class="badge bg-warning text-dark ms-2">Open</span>
+                {% else %}
+                <span class="badge bg-success ms-2">Fulfilled</span>
+                {% endif %}
+              </div>
+              <div class="tiny text-muted">{{ request.created_at.strftime('%Y-%m-%d') }}</div>
+            </div>
+          </li>
+          {% else %}
+          <li class="text-muted">No requests found.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Matched donors with full explainable breakdown -->
+      <div class="card-container">
+        <div class="fw-semibold mb-1">Top matches for your latest open request</div>
+        <div class="tiny text-muted mb-3">
+          Scored out of 100 — Compatibility (60 pts) + Eligibility (30 pts) + Proximity (10 pts).
+          Rankings are fully transparent; see each donor's breakdown below.
+        </div>
+        <ul class="list-unstyled mb-0">
+          {% for match in matching_results %}
+          <li class="py-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div class="flex-grow-1">
+                <!-- Donor name + badge -->
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="fw-semibold">{{ match.donor.name }}</span>
+                  <span class="badge bg-primary">{{ match.score }}/100</span>
+                  {% if match.donor.blood_type == 'O-' %}
+                  <span class="badge bg-danger">Universal Donor</span>
+                  {% endif %}
+                </div>
+
+                <!-- Blood type & location -->
+                <div class="tiny text-muted mb-2">
+                  {{ match.donor.blood_type }} &nbsp;•&nbsp; {{ match.donor.county }}
+                  &nbsp;•&nbsp; ~{{ match.distance_km }} km away
+                </div>
+
+                <!-- Score breakdown (judges can see the logic) -->
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                  <span class="badge bg-secondary" title="Blood type compatibility">
+                    Compatibility: {{ match.compat_score }}/60
+                  </span>
+                  <span class="badge bg-secondary" title="90-day eligibility rule">
+                    Eligibility: {{ match.elig_score }}/30
+                  </span>
+                  <span class="badge bg-secondary" title="County proximity score">
+                    Proximity: {{ match.prox_score }}/10
+                  </span>
+                </div>
+
+                <!-- Individual reason bullets -->
+                <ul class="mb-2 ps-3" style="font-size: 0.78rem; color: var(--text-muted);">
+                  {% for reason in match.reasons %}
+                  <li>{{ reason }}</li>
+                  {% endfor %}
+                </ul>
+
+                <!-- AI / baseline narrative -->
+                {% if match.explanation %}
+                <div class="tiny text-muted fst-italic">{{ match.explanation }}</div>
+                {% endif %}
+              </div>
+
+              <!-- Confirm donation button -->
+              <div class="flex-shrink-0">
+                {% if requests %}
+                <form method="POST" action="{{ url_for('hospital.confirm_donation') }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="donor_id" value="{{ match.donor.id }}">
+                  <input type="hidden" name="blood_request_id" value="{{ requests[0].id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-success">Confirm</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </li>
+          {% else %}
+          <li class="text-muted">No eligible, compatible donors found for your latest open request.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}

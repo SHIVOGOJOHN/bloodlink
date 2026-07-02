@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Blood Bank Profile Setup — BloodLink{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="page-header text-center">
+      <h1 class="page-title">Blood Bank Setup</h1>
+      <p class="page-subtitle">Provide your facility details to manage stock and fulfill requests.</p>
+    </div>
+
+    <div class="card-container">
+      <form method="POST" action="{{ url_for('bloodbank.profile_setup') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <div class="mb-3">
+          <label for="name" class="form-label">Blood Bank Name</label>
+          <input type="text" id="name" name="name" class="form-control" value="{{ default_name }}" required>
+        </div>
+
+        <div class="mb-4">
+          <label for="county" class="form-label">County</label>
+          <select id="county" name="county" class="form-select" required>
+            <option value="" disabled selected>Select your county</option>
+            <option value="Nairobi">Nairobi</option>
+            <option value="Kiambu">Kiambu</option>
+            <option value="Machakos">Machakos</option>
+            <option value="Kajiado">Kajiado</option>
+            <option value="Nakuru">Nakuru</option>
+            <option value="Uasin Gishu">Uasin Gishu</option>
+            <option value="Kisumu">Kisumu</option>
+            <option value="Mombasa">Mombasa</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Save Blood Bank Profile</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

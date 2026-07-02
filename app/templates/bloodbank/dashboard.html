@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Blood Bank Dashboard — BloodLink{% endblock %}
+{% block content %}
+  <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+    <div>
+      <h1 class="page-title">Blood Bank Dashboard</h1>
+      <p class="page-subtitle">Manage inventory and respond to incoming requests.</p>
+    </div>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if bloodbank %}
+  <div class="card-container mb-4">
+    <div class="fw-semibold mb-2">Blood Bank Profile</div>
+    <div>{{ bloodbank.name }} • {{ bloodbank.county }}</div>
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-md-5">
+      <div class="card-container h-100">
+        <div class="fw-semibold mb-3">Update Stock</div>
+        <form method="post" action="{{ url_for('bloodbank.update_stock') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Blood Type</label>
+            <select name="blood_type" class="form-select" required>
+              <option value="" disabled selected>Select blood type</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Units Available</label>
+            <input type="number" name="units_available" class="form-control" min="0" value="0" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Earliest Expiry Date <span class="text-muted">(Optional)</span></label>
+            <input type="date" name="expiry_date" class="form-control">
+          </div>
+          <button class="btn btn-primary w-100" type="submit">Save Stock</button>
+        </form>
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div class="card-container mb-4">
+        <div class="fw-semibold mb-3">Current Inventory</div>
+        <ul class="list-unstyled mb-0">
+          {% for item in stock %}
+          <li class="py-2 border-bottom d-flex justify-content-between align-items-center">
+            <div>
+              <span class="fw-semibold">{{ item.blood_type }}</span> • {{ item.units_available }} units
+            </div>
+            {% if item.expiry_date %}
+              <div class="tiny text-muted">Expires: {{ item.expiry_date.strftime('%Y-%m-%d') }}</div>
+            {% else %}
+              <div class="tiny text-muted">No expiry logged</div>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="text-muted">No stock data available.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="card-container">
+        <div class="fw-semibold mb-3">Incoming Hospital Requests</div>
+        <ul class="list-unstyled mb-0">
+          {% for request in requests %}
+          <li class="py-3 border-bottom d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-semibold">{{ request.blood_type }} • {{ request.units_needed }} units needed</div>
+              <div class="tiny text-muted">Requested by Hospital ID {{ request.hospital_id }}</div>
+              <div class="tiny text-muted mt-1">{{ request.urgency_level | capitalize }} • Status: {{ request.status }}</div>
+            </div>
+            {% if request.status == 'open' %}
+            <form method="post" action="{{ url_for('bloodbank.fulfill_request', request_id=request.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="units_fulfilled" value="{{ request.units_needed }}">
+              <button class="btn btn-outline-primary btn-sm" type="submit">Fulfill</button>
+            </form>
+            {% else %}
+            <span class="badge bg-success">Fulfilled</span>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="text-muted">No incoming requests.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Donor Profile Setup — BloodLink{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="page-header text-center">
+      <h1 class="page-title">Complete Your Profile</h1>
+      <p class="page-subtitle">We need a few more details to set up your donor account.</p>
+    </div>
+
+    <div class="card-container">
+      <form method="POST" action="{{ url_for('donor.profile_setup') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <div class="mb-3">
+          <label for="name" class="form-label">Full Name</label>
+          <input type="text" id="name" name="name" class="form-control" value="{{ default_name }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="phone" class="form-label">Phone Number</label>
+          <input type="tel" id="phone" name="phone" class="form-control" value="{{ default_phone }}" placeholder="e.g. 0712345678" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="county" class="form-label">County</label>
+          <select id="county" name="county" class="form-select" required>
+            <option value="" disabled selected>Select your county</option>
+            <option value="Nairobi">Nairobi</option>
+            <option value="Kiambu">Kiambu</option>
+            <option value="Machakos">Machakos</option>
+            <option value="Kajiado">Kajiado</option>
+            <option value="Nakuru">Nakuru</option>
+            <option value="Uasin Gishu">Uasin Gishu</option>
+            <option value="Kisumu">Kisumu</option>
+            <option value="Mombasa">Mombasa</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="blood_type" class="form-label">Blood Type</label>
+          <select id="blood_type" name="blood_type" class="form-select" required>
+            <option value="" disabled selected>Select your blood type</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+            <option value="Unknown">I don't know</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="last_donation_date" class="form-label">Last Donation Date <span class="text-muted">(Optional)</span></label>
+          <input type="date" id="last_donation_date" name="last_donation_date" class="form-control" max="{{ None|datetimeformat('%Y-%m-%d') }}">
+          <div class="form-text">If you have donated before, please provide the approximate date to help us track eligibility.</div>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="consent_given" name="consent_given" value="yes" required>
+            <label class="form-check-label" for="consent_given">
+              I consent to sharing my phone number, county, and blood type with hospitals and blood banks to facilitate blood donation coordination. I understand that my data will be used strictly in accordance with the <a href="#" target="_blank" class="text-decoration-none">Data Privacy Policy</a>.
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Save Profile</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

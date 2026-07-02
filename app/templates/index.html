@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}BloodLink - Donors, hospitals, and blood banks{% endblock %}
+{% block body %}
+<section class="hero">
+  <div class="container">
+    <h1>Move blood faster.<br><span>Coordinate care clearly.</span></h1>
+    <p>BloodLink connects donors, hospitals, and blood banks in one secure workflow for urgent requests, inventory visibility, and reliable follow-up.</p>
+    <div class="hero-actions">
+      {% if not current_user.is_authenticated or current_user.role == 'donor' %}
+      <a href="{% if current_user.is_authenticated %}{{ url_for('donor.dashboard') }}{% else %}{{ url_for('auth.register') }}?role=donor{% endif %}" class="btn btn-primary">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 6.6 9.2a8.1 8.1 0 0 0-1.9 5.1A7.3 7.3 0 0 0 12 21.5a7.3 7.3 0 0 0 7.3-7.2 8.1 8.1 0 0 0-1.9-5.1L12 2.5Z"/></svg>
+        Donate blood
+      </a>
+      {% endif %}
+      {% if not current_user.is_authenticated or current_user.role == 'hospital_staff' %}
+      <a href="{% if current_user.is_authenticated %}{{ url_for('hospital.dashboard') }}{% else %}{{ url_for('auth.register') }}?role=hospital_staff{% endif %}" class="btn btn-secondary">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 9h6M12 6v6M9 17h.01M15 17h.01"/></svg>
+        Request blood
+      </a>
+      {% endif %}
+      {% if current_user.is_authenticated and current_user.role == 'bloodbank_staff' %}
+      <a href="{{ url_for('bloodbank.dashboard') }}" class="btn btn-primary">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14M8 5V3h8v2M8 11h8M8 15h8"/></svg>
+        Manage inventory
+      </a>
+      {% endif %}
+    </div>
+
+    <div class="role-cards">
+      {% if not current_user.is_authenticated or current_user.role == 'donor' or current_user.role == 'admin' %}
+      <a class="role-card" href="{% if current_user.is_authenticated %}{{ url_for('donor.dashboard') }}{% else %}{{ url_for('auth.register') }}?role=donor{% endif %}">
+        <span class="role-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 6.6 9.2a8.1 8.1 0 0 0-1.9 5.1A7.3 7.3 0 0 0 12 21.5a7.3 7.3 0 0 0 7.3-7.2 8.1 8.1 0 0 0-1.9-5.1L12 2.5Z"/></svg>
+        </span>
+        <h3>I'm a donor</h3>
+        <p>Register your profile, blood type, and county so hospitals can find eligible donors when requests are urgent.</p>
+        <p class="mt-1 text-sm text-green fw-600">{% if current_user.is_authenticated %}Go to dashboard{% else %}Join the donor network{% endif %}</p>
+      </a>
+      {% endif %}
+      {% if not current_user.is_authenticated or current_user.role == 'hospital_staff' or current_user.role == 'admin' %}
+      <a class="role-card" href="{% if current_user.is_authenticated %}{{ url_for('hospital.dashboard') }}{% else %}{{ url_for('auth.register') }}?role=hospital_staff{% endif %}">
+        <span class="role-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 9h6M12 6v6"/></svg>
+        </span>
+        <h3>I'm hospital staff</h3>
+        <p>Create blood requests, review matching donors, and coordinate care without losing context across calls.</p>
+        <p class="mt-1 text-sm fw-600" style="color:var(--blue);">{% if current_user.is_authenticated %}Go to dashboard{% else %}Create a request{% endif %}</p>
+      </a>
+      {% endif %}
+      {% if not current_user.is_authenticated or current_user.role == 'bloodbank_staff' or current_user.role == 'admin' %}
+      <a class="role-card" href="{% if current_user.is_authenticated %}{{ url_for('bloodbank.dashboard') }}{% else %}{{ url_for('auth.register') }}?role=bloodbank_staff{% endif %}">
+        <span class="role-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14M8 5V3h8v2M8 11h8M8 15h8"/></svg>
+        </span>
+        <h3>I'm blood bank staff</h3>
+        <p>Update inventory, monitor incoming requests, and fulfill demand with a clear record of every handoff.</p>
+        <p class="mt-1 text-sm fw-600" style="color:var(--red);">{% if current_user.is_authenticated %}Go to dashboard{% else %}Manage inventory{% endif %}</p>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="trust-strip">
+  <div class="container">
+    <h2 class="text-center text-sm text-muted mb-3">Built for the teams that keep emergency care moving</h2>
+    <div class="trust-grid">
+      <span class="skill-tag">Google sign-in</span>
+      <span class="skill-tag">Email authentication</span>
+      <span class="skill-tag">Gmail SMTP reset</span>
+      <span class="skill-tag">Role dashboards</span>
+      <span class="skill-tag">Donor matching</span>
+      <span class="skill-tag">Blood bank inventory</span>
+      <span class="skill-tag">Light and dark theme</span>
+    </div>
+  </div>
+</section>
+{% endblock %}

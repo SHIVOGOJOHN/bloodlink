@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - BloodLink{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p>Monitor users, requests, notifications, donations, and reimbursement activity.</p>
+    </div>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
+  </div>
+</div>
+
+<div class="stats-grid mb-4">
+  <div class="stat-card">
+    <div class="stat-label">Users</div>
+    <div class="stat-value">{{ users|length }}</div>
+    <div class="stat-sub">registered accounts</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Requests</div>
+    <div class="stat-value">{{ requests|length }}</div>
+    <div class="stat-sub">blood requests</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Notifications</div>
+    <div class="stat-value">{{ notifications|length }}</div>
+    <div class="stat-sub">logged messages</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Reimbursements</div>
+    <div class="stat-value">{{ reimbursements|length }}</div>
+    <div class="stat-sub">requests tracked</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card-container h-100">
+      <h2 class="section-title">Blood requests</h2>
+      <ul class="list-unstyled mb-0">
+        {% for request in requests %}
+        <li class="py-2 border-bottom">{{ request.blood_type }} - {{ request.units_needed }} units - {{ request.status }}</li>
+        {% else %}
+        <li class="text-muted">No requests yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card-container h-100">
+      <h2 class="section-title">Reimbursements</h2>
+      <ul class="list-unstyled mb-0">
+        {% for item in reimbursements %}
+        <li class="py-2 border-bottom">{{ item.status }} - KES {{ item.amount }}</li>
+        {% else %}
+        <li class="text-muted">No reimbursement requests yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
