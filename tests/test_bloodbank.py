@@ -68,5 +68,6 @@ def test_bloodbank_can_update_stock_and_mark_request_fulfilled(app, client):
         updated_stock = BloodBankStock.query.filter_by(blood_type="O+", blood_bank_id=bank_id).first()
         updated_request = BloodRequest.query.get(request_id)
 
-    assert updated_stock.units_available == 3
+    assert updated_stock.units_available == 1
     assert updated_request.status == "fulfilled"
+

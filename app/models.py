@@ -98,6 +98,9 @@ class BloodBankStock(db.Model):
     expiry_date = db.Column(db.Date, nullable=True)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
+    blood_bank = db.relationship("BloodBank", backref=db.backref("stock", lazy=True))
+
+
 
 class BloodRequest(db.Model):
     __tablename__ = table_name("blood_requests")

@@ -5,7 +5,7 @@ from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db
-from app.models import BloodBankStock, BloodRequest, Donor, DonationRecord, Hospital
+from app.models import BloodBank, BloodBankStock, BloodRequest, Donor, DonationRecord, Hospital
 from app.utils.auth import role_required
 from app.utils.matching import rank_donors_for_request
 
@@ -48,25 +48,54 @@ def dashboard():
 
     try:
         requests_list = BloodRequest.query.filter_by(hospital_id=hospital.id).order_by(BloodRequest.created_at.desc()).all()
-        stock = BloodBankStock.query.all()
+        # Aggregate all blood bank stock across all banks, keyed by blood type
+        all_stock = BloodBankStock.query.all()
+        # Build a dict: blood_type -> {total_units, banks: [{name, county, units}]}
+        stock_summary: dict = {}
+        for s in all_stock:
+            bt = s.blood_type
+            bank = s.blood_bank
+            if bt not in stock_summary:
+                stock_summary[bt] = {"total": 0, "banks": []}
+            stock_summary[bt]["total"] += s.units_available
+            stock_summary[bt]["banks"].append({
+                "name": bank.name if bank else "Unknown",
+                "county": bank.county if bank else "",
+                "units": s.units_available,
+                "expiry": s.expiry_date,
+            })
+        # Also keep a simple list for county-local stock (same county as hospital)
+        local_stock = BloodBankStock.query.join(BloodBank).filter(
+            BloodBank.county == hospital.county
+        ).all()
     except SQLAlchemyError:
         requests_list = []
-        stock = []
+        stock_summary = {}
+        local_stock = []
+        all_stock = []
 
     matching_results = []
+    latest_open_request = None
     if requests_list:
-        # Match donors for the most recent open request
         open_requests = [r for r in requests_list if r.status == "open"]
         if open_requests:
-            latest_request = open_requests[0]
-            matching_results = rank_donors_for_request(latest_request.blood_type, hospital.county)
+            latest_open_request = open_requests[0]
+            # Check if local stock can cover the request
+            local_covered = sum(
+                s.units_available for s in local_stock
+                if s.blood_type == latest_open_request.blood_type
+            )
+            # Always run matching so hospital can see donor options
+            matching_results = rank_donors_for_request(latest_open_request.blood_type, hospital.county)
 
     return render_template(
         "hospital/dashboard.html",
         hospital=hospital,
         requests=requests_list,
-        stock=stock,
+        stock_summary=stock_summary,
+        local_stock=local_stock,
         matching_results=matching_results,
+        latest_request=latest_open_request,
     )
 
 
@@ -160,17 +189,41 @@ def confirm_donation():
         confirmed_at=datetime.utcnow(),
         confirmed_by_user_id=current_user.id
     )
-    
+
     # Update donor's last donation date
     donor.last_donation_date = date.today()
-    
-    # Update the request status
+
+    # Mark the request fulfilled
     blood_req.status = "fulfilled"
-    
+
+    # --- Increment blood bank stock: blood collected goes into inventory ---
+    # Find a blood bank in the same county as this hospital; if none, use any.
+    bank = BloodBank.query.filter_by(county=hospital.county).first() or BloodBank.query.first()
+    if bank:
+        stock_item = BloodBankStock.query.filter_by(
+            blood_bank_id=bank.id,
+            blood_type=donor.blood_type
+        ).first()
+        if stock_item:
+            stock_item.units_available += 1          # 1 donation unit
+            stock_item.last_updated = datetime.utcnow()
+        else:
+            # No stock entry yet for this blood type — create one
+            new_stock = BloodBankStock(
+                blood_bank_id=bank.id,
+                blood_type=donor.blood_type,
+                units_available=1,
+                last_updated=datetime.utcnow()
+            )
+            db.session.add(new_stock)
+
     db.session.add(donation)
     db.session.commit()
-    
-    flash(f"Donation confirmed for {donor.name}. The request has been marked as fulfilled.", "success")
+
+    flash(
+        f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}).",
+        "success"
+    )
     return redirect(url_for("hospital.dashboard"))
 
 

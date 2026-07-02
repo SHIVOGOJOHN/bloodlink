@@ -112,13 +112,31 @@ def update_stock():
 def fulfill_request(request_id):
     if not current_user.bloodbank:
         return redirect(url_for("bloodbank.profile_setup"))
-        
+
+    bloodbank = current_user.bloodbank
     request_record = BloodRequest.query.get_or_404(request_id)
-    units_fulfilled = request.form.get("units_fulfilled", request_record.units_needed)
+    units_fulfilled = int(request.form.get("units_fulfilled", request_record.units_needed) or request_record.units_needed)
+
+    # Deduct from blood bank stock for this blood type
+    stock_item = BloodBankStock.query.filter_by(
+        blood_bank_id=bloodbank.id,
+        blood_type=request_record.blood_type
+    ).first()
+
+    if stock_item:
+        stock_item.units_available = max(0, stock_item.units_available - units_fulfilled)
+        stock_item.last_updated = datetime.utcnow()
+        remaining = stock_item.units_available
+    else:
+        remaining = 0
+
     request_record.status = "fulfilled"
-    request_record.units_needed = max(0, int(units_fulfilled))
     db.session.commit()
-    flash("Request marked as fulfilled.", "success")
+    flash(
+        f"Request fulfilled — {units_fulfilled} unit(s) of {request_record.blood_type} dispatched. "
+        f"Remaining stock: {remaining} unit(s).",
+        "success"
+    )
     return redirect(url_for("bloodbank.dashboard"))
 
 
