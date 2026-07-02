@@ -200,6 +200,12 @@ def reset_password(token: str):
     return render_template("auth/reset_password.html", token=token)
 
 
+def _get_redirect_uri():
+    if _GOOGLE_REDIRECT_URI:
+        return _GOOGLE_REDIRECT_URI
+    return url_for("auth.google_callback", _external=True)
+
+
 @auth_bp.route("/google")
 def google_auth():
     action = request.args.get("action", "login")
@@ -214,7 +220,7 @@ def google_auth():
     session["oauth_state"] = state
     params = urlencode({
         "client_id": _GOOGLE_CLIENT_ID,
-        "redirect_uri": _GOOGLE_REDIRECT_URI,
+        "redirect_uri": _get_redirect_uri(),
         "response_type": "code",
         "scope": "openid email profile",
         "state": state,
@@ -240,7 +246,7 @@ def google_callback():
             "code": code,
             "client_id": _GOOGLE_CLIENT_ID,
             "client_secret": _GOOGLE_CLIENT_SECRET,
-            "redirect_uri": _GOOGLE_REDIRECT_URI,
+            "redirect_uri": _get_redirect_uri(),
             "grant_type": "authorization_code",
         },
         timeout=15,

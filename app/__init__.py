@@ -45,6 +45,11 @@ def create_app(config_name=None):
     app.config.from_object(config_map[config_name])
     config_map[config_name].init_app(app)
 
+    # Use ProxyFix in production to generate correct https external URLs behind Render's reverse proxy
+    if config_name == "production":
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     os.makedirs(app.instance_path, exist_ok=True)
 
     db.init_app(app)
