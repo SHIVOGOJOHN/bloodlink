@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Blood Bank Dashboard — BloodLink{% endblock %}
 {% block content %}
-  <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <div>
+
+  {# ── Page header ──────────────────────────────────────────── #}
+  <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
     <div>
       <h1 class="page-title">Blood Bank Dashboard</h1>
-      <p class="page-subtitle">Manage inventory and respond to incoming requests.</p>
+      <p class="page-subtitle">Manage inventory and respond to incoming hospital requests.</p>
     </div>
     <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
 
+  {# ── Flash messages ───────────────────────────────────────── #}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -18,95 +20,199 @@
     {% endif %}
   {% endwith %}
 
+  {# ── Facility identity banner ─────────────────────────────── #}
   {% if bloodbank %}
   <div class="card-container mb-4">
-    <div class="fw-semibold mb-2">Blood Bank Profile</div>
-    <div>{{ bloodbank.name }} • {{ bloodbank.county }}</div>
+    <div class="d-flex align-items-center gap-3">
+      {% if bloodbank.profile_pic_url %}
+        <img src="{{ bloodbank.profile_pic_url }}" alt="{{ bloodbank.name }}"
+          style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">
+      {% else %}
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--red),#7f1d1d);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">
+          {{ (bloodbank.name or 'B')[0].upper() }}
+        </div>
+      {% endif %}
+      <div>
+        <div class="fw-semibold" style="font-size:1.05rem;">{{ bloodbank.name }}</div>
+        <div class="tiny text-muted">{{ bloodbank.county }} County &nbsp;·&nbsp; Blood Bank</div>
+      </div>
+      <a href="{{ url_for('bloodbank.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">View Profile</a>
+    </div>
   </div>
   {% endif %}
 
-  <div class="row g-4">
-    <div class="col-md-5">
-      <div class="card-container h-100">
-        <div class="fw-semibold mb-3">Update Stock</div>
-        <form method="post" action="{{ url_for('bloodbank.update_stock') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="mb-3">
-            <label class="form-label">Blood Type</label>
-            <select name="blood_type" class="form-select" required>
-              <option value="" disabled selected>Select blood type</option>
-              <option value="A+">A+</option>
-              <option value="A-">A-</option>
-              <option value="B+">B+</option>
-              <option value="B-">B-</option>
-              <option value="AB+">AB+</option>
-              <option value="AB-">AB-</option>
-              <option value="O+">O+</option>
-              <option value="O-">O-</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Units Available</label>
-            <input type="number" name="units_available" class="form-control" min="0" value="0" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Earliest Expiry Date <span class="text-muted">(Optional)</span></label>
-            <input type="date" name="expiry_date" class="form-control">
-          </div>
-          <button class="btn btn-primary w-100" type="submit">Save Stock</button>
-        </form>
+  {# ── Quick-stat row ───────────────────────────────────────── #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-label">Blood Types in Stock</div>
+        <div class="stat-value">{{ stock|length }}</div>
+        <div class="stat-sub">distinct types logged</div>
       </div>
     </div>
-    <div class="col-md-7">
-      <div class="card-container mb-4">
-        <div class="fw-semibold mb-3">Current Inventory</div>
-        <ul class="list-unstyled mb-0">
-          {% for item in stock %}
-          <li class="py-2 border-bottom d-flex justify-content-between align-items-center">
-            <div>
-              <span class="fw-semibold">{{ item.blood_type }}</span> • {{ item.units_available }} units
-            </div>
-            {% if item.expiry_date %}
-              <div class="tiny text-muted">Expires: {{ item.expiry_date.strftime('%Y-%m-%d') }}</div>
-            {% else %}
-              <div class="tiny text-muted">No expiry logged</div>
-            {% endif %}
-          </li>
-          {% else %}
-          <li class="text-muted">No stock data available.</li>
-          {% endfor %}
-        </ul>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-label">Total Units Available</div>
+        <div class="stat-value">{{ stock|sum(attribute='units_available') }}</div>
+        <div class="stat-sub">units across all types</div>
       </div>
-
-      <div class="card-container">
-        <div class="fw-semibold mb-3">Incoming Hospital Requests</div>
-        <ul class="list-unstyled mb-0">
-          {% for request in requests %}
-          <li class="py-3 border-bottom d-flex justify-content-between align-items-start">
-            <div>
-              <div class="fw-semibold">{{ request.blood_type }} • {{ request.units_needed }} units needed</div>
-              {% if request.hospital %}
-                <div class="tiny text-muted">Requested by: <a href="{{ url_for('public_hospital_profile', hospital_id=request.hospital.id) }}" class="text-decoration-none" style="color: var(--primary);">{{ request.hospital.name }}</a></div>
-              {% else %}
-                <div class="tiny text-muted">Requested by Hospital ID {{ request.hospital_id }}</div>
-              {% endif %}
-              <div class="tiny text-muted mt-1">{{ request.urgency_level | capitalize }} • Status: {{ request.status }}</div>
-            </div>
-            {% if request.status == 'open' %}
-            <form method="post" action="{{ url_for('bloodbank.fulfill_request', request_id=request.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="units_fulfilled" value="{{ request.units_needed }}">
-              <button class="btn btn-outline-primary btn-sm" type="submit">Fulfill</button>
-            </form>
-            {% else %}
-            <span class="badge bg-success">Fulfilled</span>
-            {% endif %}
-          </li>
-          {% else %}
-          <li class="text-muted">No incoming requests.</li>
-          {% endfor %}
-        </ul>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-label">Open Requests</div>
+        <div class="stat-value">{{ requests|selectattr('status','equalto','open')|list|length }}</div>
+        <div class="stat-sub">awaiting fulfilment</div>
       </div>
     </div>
   </div>
+
+  {# ── Main two-column grid ─────────────────────────────────── #}
+  <div class="row g-4">
+
+    {# Left — Update Stock form #}
+    <div class="col-md-5">
+      <div class="card-container h-100" style="margin-bottom:0;">
+        <div class="fw-semibold mb-4" style="font-size:1rem;">Update Stock</div>
+        <form method="post" action="{{ url_for('bloodbank.update_stock') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label class="form-label" for="blood_type">Blood Type</label>
+            <select id="blood_type" name="blood_type" class="form-select" required>
+              <option value="" disabled selected>Select blood type</option>
+              <option value="A+">A+</option>
+              <option value="A-">A−</option>
+              <option value="B+">B+</option>
+              <option value="B-">B−</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB−</option>
+              <option value="O+">O+</option>
+              <option value="O-">O−</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="units_available">Units Available</label>
+            <input id="units_available" type="number" name="units_available"
+              class="form-control" min="0" value="0" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="expiry_date">
+              Earliest Expiry Date <span class="text-muted">(Optional)</span>
+            </label>
+            <input id="expiry_date" type="date" name="expiry_date" class="form-control">
+          </div>
+
+          <button class="btn btn-primary w-100 mt-2" type="submit">Save Stock</button>
+        </form>
+      </div>
+    </div>
+
+    {# Right — Inventory + Requests #}
+    <div class="col-md-7">
+
+      {# Current Inventory #}
+      <div class="card-container">
+        <div class="fw-semibold mb-3" style="font-size:1rem;">Current Inventory</div>
+        {% if stock %}
+        <ul class="list-unstyled mb-0">
+          {% for item in stock %}
+          <li style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-danger" style="font-size:0.82rem;min-width:36px;text-align:center;">{{ item.blood_type }}</span>
+                <span class="fw-semibold">{{ item.units_available }}</span>
+                <span class="text-muted tiny">units</span>
+              </div>
+              <div class="tiny text-muted">
+                {% if item.expiry_date %}
+                  Expires: {{ item.expiry_date.strftime('%Y-%m-%d') }}
+                {% else %}
+                  No expiry logged
+                {% endif %}
+              </div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-muted tiny">No stock data recorded yet. Use the Update Stock form to add inventory.</div>
+        {% endif %}
+      </div>
+
+      {# Incoming Hospital Requests #}
+      <div class="card-container" style="margin-bottom:0;">
+        <div class="fw-semibold mb-1" style="font-size:1rem;">Incoming Hospital Requests</div>
+        <div class="tiny text-muted mb-3">Hospitals requesting blood from the network. Fulfill open requests to reduce urgency.</div>
+        {% if requests %}
+        <ul class="list-unstyled mb-0">
+          {% for req in requests %}
+          <li style="padding: 14px 0; border-bottom: 1px solid var(--border);">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+
+              {# Hospital identity #}
+              <div class="d-flex gap-3 align-items-start flex-grow-1">
+                {% if req.hospital and req.hospital.profile_pic_url %}
+                  <img src="{{ req.hospital.profile_pic_url }}" alt="{{ req.hospital.name }}"
+                    style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;margin-top:2px;">
+                {% else %}
+                  <div style="width:38px;height:38px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.95rem;color:var(--blue);flex-shrink:0;margin-top:2px;">
+                    {{ (req.hospital.name if req.hospital else 'H')[0].upper() }}
+                  </div>
+                {% endif %}
+
+                <div>
+                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <span class="badge bg-danger" style="font-size:0.8rem;">{{ req.blood_type }}</span>
+                    <span class="fw-semibold">{{ req.units_needed }} units needed</span>
+                    {% if req.urgency_level == 'urgent' %}
+                      <span class="badge bg-warning text-dark">Urgent</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Normal</span>
+                    {% endif %}
+                  </div>
+                  <div class="tiny text-muted">
+                    {% if req.hospital %}
+                      <a href="{{ url_for('public_hospital_profile', hospital_id=req.hospital.id) }}"
+                        class="text-decoration-none" style="color:var(--primary);">{{ req.hospital.name }}</a>
+                    {% else %}
+                      Hospital ID {{ req.hospital_id }}
+                    {% endif %}
+                    &nbsp;·&nbsp; {{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '' }}
+                    &nbsp;·&nbsp; Status:
+                    {% if req.status == 'open' %}
+                      <span style="color:var(--warning);font-weight:600;">Open</span>
+                    {% else %}
+                      <span style="color:var(--green);font-weight:600;">Fulfilled</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              {# Action #}
+              <div class="flex-shrink-0">
+                {% if req.status == 'open' %}
+                <form method="post" action="{{ url_for('bloodbank.fulfill_request', request_id=req.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="units_fulfilled" value="{{ req.units_needed }}">
+                  <button class="btn btn-outline-primary btn-sm" type="submit">Fulfill</button>
+                </form>
+                {% else %}
+                <span class="badge bg-success">Fulfilled</span>
+                {% endif %}
+              </div>
+
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-muted tiny">No incoming requests at this time.</div>
+        {% endif %}
+      </div>
+
+    </div>{# end col-md-7 #}
+  </div>{# end row #}
+
 {% endblock %}
