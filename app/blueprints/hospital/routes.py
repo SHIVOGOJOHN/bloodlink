@@ -242,7 +242,31 @@ def confirm_donation():
     return redirect(url_for("hospital.dashboard"))
 
 
+@hospital_bp.route("/requests/<int:request_id>/confirm-receipt", methods=["POST"])
+@role_required("hospital_staff")
+def confirm_receipt(request_id):
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+
+    request_record = BloodRequest.query.get_or_404(request_id)
+    if request_record.hospital_id != hospital.id:
+        flash("Unauthorized request action.", "danger")
+        return redirect(url_for("hospital.dashboard"))
+
+    if request_record.status != "dispatched":
+        flash("Request is not in dispatched status.", "warning")
+        return redirect(url_for("hospital.dashboard"))
+
+    request_record.status = "received"
+    db.session.commit()
+
+    flash("Blood package receipt confirmed. Inventory transaction complete.", "success")
+    return redirect(url_for("hospital.dashboard"))
+
+
 @hospital_bp.route("/profile")
+
 @role_required("hospital_staff")
 def profile():
     hospital = current_user.hospital

@@ -32,7 +32,7 @@ def init_database(app):
             
             # Auto-migrate: add columns if they don't exist in existing tables (e.g. on MySQL)
             from sqlalchemy import text
-            from .models import Donor, Hospital, BloodBank
+            from .models import Donor, Hospital, BloodBank, BloodRequest
 
             
             tables_to_update = [
@@ -53,6 +53,9 @@ def init_database(app):
                     ("ward", "VARCHAR(100)"),
                     ("latitude", "DOUBLE"),
                     ("longitude", "DOUBLE")
+                ]),
+                (BloodRequest.__tablename__, [
+                    ("fulfilled_by_bloodbank_id", "INT")
                 ])
             ]
             

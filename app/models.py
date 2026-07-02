@@ -124,9 +124,12 @@ class BloodRequest(db.Model):
     units_needed = db.Column(db.Integer, nullable=False)
     urgency_level = db.Column(db.String(50), default="normal")
     status = db.Column(db.String(50), default="open")
+    fulfilled_by_bloodbank_id = db.Column(db.Integer, db.ForeignKey(f"{BLOODBANK_TABLE}.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     hospital = db.relationship("Hospital", backref=db.backref("requests", lazy=True))
+    fulfilled_by_bank = db.relationship("BloodBank", foreign_keys=[fulfilled_by_bloodbank_id], backref=db.backref("fulfilled_requests", lazy=True))
+
 
 
 class DonationRecord(db.Model):

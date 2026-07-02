@@ -144,10 +144,11 @@ def fulfill_request(request_id):
     else:
         remaining = 0
 
-    request_record.status = "fulfilled"
+    request_record.status = "dispatched"
+    request_record.fulfilled_by_bloodbank_id = bloodbank.id
     db.session.commit()
     flash(
-        f"Request fulfilled — {units_fulfilled} unit(s) of {request_record.blood_type} dispatched. "
+        f"Request dispatched — {units_fulfilled} unit(s) of {request_record.blood_type} sent in transit. "
         f"Remaining stock: {remaining} unit(s).",
         "success"
     )

@@ -183,8 +183,10 @@
                     &nbsp;·&nbsp; Status:
                     {% if req.status == 'open' %}
                       <span style="color:var(--warning);font-weight:600;">Open</span>
+                    {% elif req.status == 'dispatched' %}
+                      <span style="color:var(--blue);font-weight:600;">Dispatched (In Transit)</span>
                     {% else %}
-                      <span style="color:var(--green);font-weight:600;">Fulfilled</span>
+                      <span style="color:var(--green);font-weight:600;">Received</span>
                     {% endif %}
                   </div>
                 </div>
@@ -196,12 +198,23 @@
                 <form method="post" action="{{ url_for('bloodbank.fulfill_request', request_id=req.id) }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <input type="hidden" name="units_fulfilled" value="{{ req.units_needed }}">
-                  <button class="btn btn-outline-primary btn-sm" type="submit">Fulfill</button>
+                  <button class="btn btn-outline-primary btn-sm" type="submit">Dispatch</button>
                 </form>
+                {% elif req.status == 'dispatched' %}
+                  {% if req.fulfilled_by_bloodbank_id == bloodbank.id %}
+                    <span class="badge bg-info text-dark">Dispatched</span>
+                  {% else %}
+                    <span class="badge bg-secondary">By Other Bank</span>
+                  {% endif %}
                 {% else %}
-                <span class="badge bg-success">Fulfilled</span>
+                  {% if req.fulfilled_by_bloodbank_id == bloodbank.id %}
+                    <span class="badge bg-success">Completed</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Completed</span>
+                  {% endif %}
                 {% endif %}
               </div>
+
 
             </div>
           </li>

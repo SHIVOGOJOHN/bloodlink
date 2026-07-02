@@ -51,7 +51,48 @@ class HospitalFlowTests(unittest.TestCase):
             self.assertEqual(match_res["score"], 100) # 60 (compatibility) + 30 (eligibility) + 10 (proximity)
             self.assertIn("exact GPS match", match_res["reasons"][2])
 
+    def test_confirm_receipt_flow(self):
+        from app.models import User, Hospital, BloodRequest
+        from app.extensions import db
+
+        with self.app.app_context():
+            # Setup hospital user and profile
+            user = User(email="hosp_rec@example.com", password_hash="x", full_name="Receipt Hosp", role="hospital_staff")
+            db.session.add(user)
+            db.session.flush()
+            user_id = user.id
+
+            hospital = Hospital(
+                user_id=user_id, name="Receipt Hospital", county="Nairobi", contact_phone="0712345670"
+            )
+            db.session.add(hospital)
+            db.session.flush()
+            hosp_id = hospital.id
+
+            # Create a request in 'dispatched' status
+            req = BloodRequest(
+                hospital_id=hosp_id, blood_type="O+", units_needed=3, urgency_level="urgent", status="dispatched"
+            )
+            db.session.add(req)
+            db.session.commit()
+            req_id = req.id
+
+        with self.client.session_transaction() as session:
+            session["_user_id"] = str(user_id)
+            session["_fresh"] = True
+
+        response = self.client.post(
+            f"/hospital/requests/{req_id}/confirm-receipt",
+            follow_redirects=True
+        )
+        self.assertEqual(response.status_code, 200)
+
+        with self.app.app_context():
+            updated_req = BloodRequest.query.get(req_id)
+            self.assertEqual(updated_req.status, "received")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

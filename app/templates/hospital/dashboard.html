@@ -146,16 +146,29 @@
                   <span class="badge bg-secondary">Normal</span>
                 {% endif %}
               </div>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="tiny text-muted">{{ req.created_at.strftime('%Y-%m-%d') }}</span>
                 {% if req.status == 'open' %}
                   <span class="badge bg-warning text-dark">Open</span>
+                {% elif req.status == 'dispatched' %}
+                  <span class="badge bg-info text-dark" title="Dispatched by {{ req.fulfilled_by_bank.name if req.fulfilled_by_bank else 'Blood Bank' }} — In Transit">Dispatched</span>
+                  <form method="POST" action="{{ url_for('hospital.confirm_receipt', request_id=req.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size:0.75rem;">Confirm Receipt</button>
+                  </form>
                 {% else %}
-                  <span class="badge bg-success">Fulfilled</span>
+                  <span class="badge bg-success" title="Received & Completed by {{ req.fulfilled_by_bank.name if req.fulfilled_by_bank else 'Blood Bank' }}">Received</span>
                 {% endif %}
               </div>
             </div>
+            {% if req.fulfilled_by_bank %}
+            <div class="tiny text-muted mt-1" style="font-size:0.75rem;">
+              {{ "Dispatched by" if req.status == "dispatched" else "Fulfilled by" }}: 
+              <span class="fw-semibold">{{ req.fulfilled_by_bank.name }}</span> ({{ req.fulfilled_by_bank.county }} County)
+            </div>
+            {% endif %}
           </li>
+
           {% endfor %}
         </ul>
         {% else %}
