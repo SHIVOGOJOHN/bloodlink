@@ -29,12 +29,49 @@ def init_database(app):
     with app.app_context():
         try:
             db.create_all()
+            
+            # Auto-migrate: add columns if they don't exist in existing tables (e.g. on MySQL)
+            from sqlalchemy import text
+            from .models import Donor, Hospital, BloodBank
+
+            
+            tables_to_update = [
+                (Donor.__tablename__, [
+                    ("subcounty", "VARCHAR(100)"),
+                    ("ward", "VARCHAR(100)"),
+                    ("latitude", "DOUBLE"),
+                    ("longitude", "DOUBLE")
+                ]),
+                (Hospital.__tablename__, [
+                    ("subcounty", "VARCHAR(100)"),
+                    ("ward", "VARCHAR(100)"),
+                    ("latitude", "DOUBLE"),
+                    ("longitude", "DOUBLE")
+                ]),
+                (BloodBank.__tablename__, [
+                    ("subcounty", "VARCHAR(100)"),
+                    ("ward", "VARCHAR(100)"),
+                    ("latitude", "DOUBLE"),
+                    ("longitude", "DOUBLE")
+                ])
+            ]
+            
+            for table_name, columns in tables_to_update:
+                for col_name, col_type in columns:
+                    try:
+                        db.session.execute(text(f"ALTER TABLE `{table_name}` ADD COLUMN `{col_name}` {col_type} NULL"))
+                        db.session.commit()
+                        app.logger.info("Migrated: Added column %s to %s", col_name, table_name)
+                    except Exception:
+                        db.session.rollback()
+
             if app.config.get("SEED_DATABASE_ON_INIT", True):
                 from .seed import seed_database
 
                 seed_database(app)
         except Exception as exc:
             app.logger.warning("Database initialization skipped: %s", exc)
+
 
 
 def create_app(config_name=None):
