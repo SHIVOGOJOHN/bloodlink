@@ -123,7 +123,6 @@ class HospitalFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         self.assertIn(f"/profile/bloodbank/{bloodbank_id}", html)
-        self.assertIn("View profile", html)
 
 
 if __name__ == "__main__":

@@ -169,9 +169,6 @@
                 {{ req.fulfilled_by_bank.name }}
               </a>
               ({{ req.fulfilled_by_bank.county }} County)
-              <span class="ms-1 tiny">
-                <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=req.fulfilled_by_bank.id) }}" class="text-decoration-none" style="color:var(--muted);">View profile</a>
-              </span>
             </div>
             {% endif %}
           </li>
