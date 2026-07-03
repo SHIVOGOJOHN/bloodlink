@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from app.extensions import db
@@ -130,7 +130,9 @@ def fulfill_request(request_id):
         return redirect(url_for("bloodbank.profile_setup"))
 
     bloodbank = current_user.bloodbank
-    request_record = BloodRequest.query.get_or_404(request_id)
+    request_record = db.session.get(BloodRequest, request_id)
+    if not request_record:
+        abort(404)
     units_fulfilled = int(request.form.get("units_fulfilled", request_record.units_needed) or request_record.units_needed)
 
     # Deduct from blood bank stock for this blood type

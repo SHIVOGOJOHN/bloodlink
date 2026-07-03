@@ -158,6 +158,7 @@ def create_app(config_name=None):
         except Exception:
             abort(404)
 
+    from flask import abort
     from flask_login import login_required
 
     @app.route("/profile/donor/<int:donor_id>")
@@ -166,7 +167,9 @@ def create_app(config_name=None):
         from app.models import Donor
         from app.utils.matching import is_eligible
         
-        donor = Donor.query.get_or_404(donor_id)
+        donor = db.session.get(Donor, donor_id)
+        if not donor:
+            abort(404)
         eligible, days_since = is_eligible(donor)
         days_left = max(0, 90 - days_since) if days_since is not None else 0
         
@@ -194,14 +197,18 @@ def create_app(config_name=None):
     @login_required
     def public_hospital_profile(hospital_id):
         from app.models import Hospital
-        hospital = Hospital.query.get_or_404(hospital_id)
+        hospital = db.session.get(Hospital, hospital_id)
+        if not hospital:
+            abort(404)
         return render_template("hospital/profile.html", hospital=hospital)
 
     @app.route("/profile/bloodbank/<int:bloodbank_id>")
     @login_required
     def public_bloodbank_profile(bloodbank_id):
         from app.models import BloodBank
-        bloodbank = BloodBank.query.get_or_404(bloodbank_id)
+        bloodbank = db.session.get(BloodBank, bloodbank_id)
+        if not bloodbank:
+            abort(404)
         return render_template("bloodbank/profile.html", bloodbank=bloodbank)
 
     @app.errorhandler(404)

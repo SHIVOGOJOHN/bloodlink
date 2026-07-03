@@ -87,7 +87,7 @@ class HospitalFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         with self.app.app_context():
-            updated_req = BloodRequest.query.get(req_id)
+            updated_req = db.session.get(BloodRequest, req_id)
             self.assertEqual(updated_req.status, "received")
 
     def test_hospital_dashboard_links_fulfilled_bank_profile(self):

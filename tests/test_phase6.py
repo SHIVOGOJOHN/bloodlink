@@ -33,10 +33,11 @@ class Phase6Tests(unittest.TestCase):
             self.assertIsNotNone(hospital)
 
             forecast = get_hospital_forecast(hospital)
-            self.assertTrue(forecast["is_illustrative"])
+            self.assertTrue(forecast["is_operational"])
             self.assertEqual(len(forecast["daily_totals"]), 14)
             self.assertGreater(len(forecast["blood_type_summary"]), 0)
             self.assertIn("refresh_policy", forecast)
+            self.assertIn("selected_model", forecast["training_summary"])
 
     def test_county_map_service_returns_summary(self):
         if not self._db_is_available():
@@ -67,7 +68,7 @@ class Phase6Tests(unittest.TestCase):
         response = self.client.get("/hospital/", follow_redirects=False)
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn("Illustrative Demand Forecast", html)
+        self.assertIn("Operational Demand Forecast", html)
         self.assertIn("forecast-chart", html)
 
     def test_admin_dashboard_renders_national_map(self):
@@ -88,7 +89,7 @@ class Phase6Tests(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn("National Monitoring Map", html)
         self.assertIn("county-map", html)
-        self.assertIn("Illustrative National Forecast", html)
+        self.assertIn("Operational National Forecast", html)
 
 
 if __name__ == "__main__":

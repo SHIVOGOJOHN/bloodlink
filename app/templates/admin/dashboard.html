@@ -85,8 +85,8 @@
 <div class="card-container mb-4">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-      <div class="fw-semibold" style="font-size:1rem;">Illustrative National Forecast</div>
-      <div class="tiny text-muted mt-1">The forecast retrains automatically when request, stock, or donation data changes. This is planning support only.</div>
+      <div class="fw-semibold" style="font-size:1rem;">Operational National Forecast</div>
+      <div class="tiny text-muted mt-1">Multiple models are trained on actual request history, evaluated chronologically, and the best performer is selected automatically when request, stock, or donation data changes.</div>
     </div>
     <span class="badge bg-secondary">Shared model</span>
   </div>
@@ -95,22 +95,46 @@
     <div class="stat-card">
       <div class="stat-label">Training rows</div>
       <div class="stat-value">{{ national_forecast.training_summary.training_rows }}</div>
-      <div class="stat-sub">actual + synthetic</div>
+      <div class="stat-sub">historical request rows</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Actual rows</div>
-      <div class="stat-value">{{ national_forecast.training_summary.actual_rows }}</div>
-      <div class="stat-sub">approved hospital requests</div>
+      <div class="stat-label">Train rows</div>
+      <div class="stat-value">{{ national_forecast.training_summary.train_rows }}</div>
+      <div class="stat-sub">used for fitting</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Synthetic rows</div>
-      <div class="stat-value">{{ national_forecast.training_summary.synthetic_rows }}</div>
-      <div class="stat-sub">structured augmentation</div>
+      <div class="stat-label">Validation rows</div>
+      <div class="stat-value">{{ national_forecast.training_summary.validation_rows }}</div>
+      <div class="stat-sub">chronological holdout</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Model</div>
-      <div class="stat-value" style="font-size:1rem;">{% if national_forecast.training_summary.sklearn_available %}RandomForest{% else %}Baseline{% endif %}</div>
+      <div class="stat-value" style="font-size:1rem;">{{ national_forecast.training_summary.selected_model or 'n/a' }}</div>
       <div class="stat-sub">trained {{ national_forecast.training_summary.trained_at[:10] if national_forecast.training_summary.trained_at else 'n/a' }}</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="stat-card h-100">
+        <div class="stat-label">Validation MAE</div>
+        <div class="stat-value">{{ national_forecast.training_summary.selected_model_mae if national_forecast.training_summary.selected_model_mae is not none else 'n/a' }}</div>
+        <div class="stat-sub">lower is better</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card h-100">
+        <div class="stat-label">Validation RMSE</div>
+        <div class="stat-value">{{ national_forecast.training_summary.selected_model_rmse if national_forecast.training_summary.selected_model_rmse is not none else 'n/a' }}</div>
+        <div class="stat-sub">lower is better</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card h-100">
+        <div class="stat-label">Validation MAPE</div>
+        <div class="stat-value">{{ national_forecast.training_summary.selected_model_mape if national_forecast.training_summary.selected_model_mape is not none else 'n/a' }}</div>
+        <div class="stat-sub">percentage error</div>
+      </div>
     </div>
   </div>
 

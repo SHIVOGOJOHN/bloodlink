@@ -10,7 +10,7 @@
   <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
     <div>
       <h1 class="page-title">Hospital Dashboard</h1>
-      <p class="page-subtitle">Check blood bank stock, create requests, coordinate with matched donors, and view an illustrative demand forecast.</p>
+      <p class="page-subtitle">Check blood bank stock, create requests, coordinate with matched donors, and view an operational demand forecast.</p>
     </div>
     <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
@@ -255,8 +255,8 @@
   <div class="card-container mt-4">
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
       <div>
-        <div class="fw-semibold" style="font-size:1rem;">Illustrative Demand Forecast</div>
-        <div class="tiny text-muted">Shared model trained on pooled hospital requests. It refreshes automatically when request, stock, or donation data changes.</div>
+        <div class="fw-semibold" style="font-size:1rem;">Operational Demand Forecast</div>
+        <div class="tiny text-muted">Multiple models are trained on actual request history, evaluated chronologically, and the best performer is selected automatically when request, stock, or donation data changes.</div>
       </div>
       <span class="badge bg-secondary">Auto-refreshing</span>
     </div>
@@ -265,22 +265,46 @@
       <div class="stat-card">
         <div class="stat-label">Training rows</div>
         <div class="stat-value">{{ forecast_panel.training_summary.training_rows }}</div>
-        <div class="stat-sub">actual + synthetic samples</div>
+        <div class="stat-sub">historical request rows</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Actual rows</div>
-        <div class="stat-value">{{ forecast_panel.training_summary.actual_rows }}</div>
-        <div class="stat-sub">approved hospital requests</div>
+        <div class="stat-label">Train rows</div>
+        <div class="stat-value">{{ forecast_panel.training_summary.train_rows }}</div>
+        <div class="stat-sub">used for fitting</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Synthetic rows</div>
-        <div class="stat-value">{{ forecast_panel.training_summary.synthetic_rows }}</div>
-        <div class="stat-sub">structured augmentation</div>
+        <div class="stat-label">Validation rows</div>
+        <div class="stat-value">{{ forecast_panel.training_summary.validation_rows }}</div>
+        <div class="stat-sub">chronological holdout</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Model</div>
-        <div class="stat-value" style="font-size:1rem;">{% if forecast_panel.training_summary.sklearn_available %}RandomForest{% else %}Baseline{% endif %}</div>
+        <div class="stat-value" style="font-size:1rem;">{{ forecast_panel.training_summary.selected_model or 'n/a' }}</div>
         <div class="stat-sub">trained {{ forecast_panel.training_summary.trained_at[:10] if forecast_panel.training_summary.trained_at else 'n/a' }}</div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-md-4">
+        <div class="stat-card h-100">
+          <div class="stat-label">Validation MAE</div>
+          <div class="stat-value">{{ forecast_panel.training_summary.selected_model_mae if forecast_panel.training_summary.selected_model_mae is not none else 'n/a' }}</div>
+          <div class="stat-sub">lower is better</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card h-100">
+          <div class="stat-label">Validation RMSE</div>
+          <div class="stat-value">{{ forecast_panel.training_summary.selected_model_rmse if forecast_panel.training_summary.selected_model_rmse is not none else 'n/a' }}</div>
+          <div class="stat-sub">lower is better</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card h-100">
+          <div class="stat-label">Validation MAPE</div>
+          <div class="stat-value">{{ forecast_panel.training_summary.selected_model_mape if forecast_panel.training_summary.selected_model_mape is not none else 'n/a' }}</div>
+          <div class="stat-sub">percentage error</div>
+        </div>
       </div>
     </div>
 
@@ -308,6 +332,7 @@
       const data = {{ forecast_panel | tojson }};
       const canvas = document.getElementById('forecast-chart');
       if (!canvas || !data || !data.daily_totals || !data.daily_totals.length) return;
+      const refreshUrl = {{ url_for('api.hospital_forecast', hospital_id=hospital.id if hospital else 0) | tojson }};
       const labels = data.daily_totals.map((item) => item.date);
       const values = data.daily_totals.map((item) => item.predicted_units);
       new Chart(canvas.getContext('2d'), {
@@ -333,6 +358,8 @@
           },
         },
       });
+
+      window.BloodLinkForecastRefreshUrl = refreshUrl;
     })();
   </script>
   {% endif %}

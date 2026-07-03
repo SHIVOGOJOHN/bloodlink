@@ -1,6 +1,6 @@
 from datetime import datetime, date
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -188,8 +188,8 @@ def confirm_donation():
         flash("Missing donor or request ID.", "danger")
         return redirect(url_for("hospital.dashboard"))
         
-    donor = Donor.query.get(donor_id)
-    blood_req = BloodRequest.query.get(blood_request_id)
+    donor = db.session.get(Donor, int(donor_id)) if donor_id else None
+    blood_req = db.session.get(BloodRequest, int(blood_request_id)) if blood_request_id else None
     
     if not donor or not blood_req:
         flash("Invalid donor or request.", "danger")
@@ -255,7 +255,9 @@ def confirm_receipt(request_id):
     if not hospital:
         return redirect(url_for("hospital.profile_setup"))
 
-    request_record = BloodRequest.query.get_or_404(request_id)
+    request_record = db.session.get(BloodRequest, request_id)
+    if not request_record:
+        abort(404)
     if request_record.hospital_id != hospital.id:
         flash("Unauthorized request action.", "danger")
         return redirect(url_for("hospital.dashboard"))

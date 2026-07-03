@@ -18,13 +18,25 @@ from app.models import BloodBank, BloodBankStock, BloodRequest, DonationRecord, 
 from app.utils.matching import COUNTY_DISTANCE
 
 try:  # scikit-learn is required by the plan, but the app should still degrade gracefully.
+    from sklearn.dummy import DummyRegressor
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.feature_extraction import DictVectorizer
+    from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
+    from sklearn.linear_model import Ridge
+    from sklearn.metrics import mean_absolute_error, mean_squared_error
+    from sklearn.pipeline import Pipeline
 
     SKLEARN_AVAILABLE = True
 except Exception:  # pragma: no cover - only used when sklearn is unavailable locally.
+    DummyRegressor = None  # type: ignore[assignment]
     RandomForestRegressor = None  # type: ignore[assignment]
     DictVectorizer = None  # type: ignore[assignment]
+    GradientBoostingRegressor = None  # type: ignore[assignment]
+    HistGradientBoostingRegressor = None  # type: ignore[assignment]
+    Ridge = None  # type: ignore[assignment]
+    mean_absolute_error = None  # type: ignore[assignment]
+    mean_squared_error = None  # type: ignore[assignment]
+    Pipeline = None  # type: ignore[assignment]
     SKLEARN_AVAILABLE = False
 
 BLOOD_TYPES = ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"]
@@ -254,6 +266,209 @@ def _request_counters(reference_date: datetime | None = None) -> dict[str, Any]:
         "by_type_90": by_type_90,
         "all_requests_by_hospital": all_requests_by_hospital,
     }
+
+
+def _training_feature_row(
+    request: BloodRequest,
+    request_history: list[dict[str, Any]],
+    stock_totals: dict[str, int],
+    bank_counts: dict[str, int],
+) -> dict[str, Any]:
+    hospital = request.hospital
+    county = (hospital.county if hospital and hospital.county else "Unknown").strip() or "Unknown"
+    blood_type = (request.blood_type or "Unknown").strip() or "Unknown"
+    when = request.created_at or datetime.utcnow()
+    cutoff_30 = when - timedelta(days=30)
+    cutoff_90 = when - timedelta(days=90)
+
+    recent_hospital_30 = 0
+    recent_hospital_90 = 0
+    recent_county_30 = 0
+    recent_type_30 = 0
+    recent_type_90 = 0
+
+    for past in request_history:
+        past_when = past["created_at"]
+        if past["hospital_id"] == request.hospital_id and past_when >= cutoff_30:
+            recent_hospital_30 += 1
+        if past["hospital_id"] == request.hospital_id and past_when >= cutoff_90:
+            recent_hospital_90 += 1
+        if past["county"] == county and past_when >= cutoff_30:
+            recent_county_30 += 1
+        if past["hospital_id"] == request.hospital_id and past["blood_type"] == blood_type and past_when >= cutoff_30:
+            recent_type_30 += 1
+        if past["hospital_id"] == request.hospital_id and past["blood_type"] == blood_type and past_when >= cutoff_90:
+            recent_type_90 += 1
+
+    county_stock_total = stock_totals.get(county, 0)
+    county_pressure = round(recent_county_30 / max(county_stock_total, 1), 3)
+
+    return {
+        "hospital_id": f"hospital-{request.hospital_id}",
+        "county": county,
+        "blood_type": blood_type,
+        "urgency_level": (request.urgency_level or "normal").strip() or "normal",
+        "day_of_week_name": _day_name(when),
+        "month_name": _month_name(when),
+        "is_weekend": int(when.weekday() >= 5),
+        "holiday_flag": _holiday_flag(when),
+        "recent_hospital_requests_30d": recent_hospital_30,
+        "recent_hospital_requests_90d": recent_hospital_90,
+        "recent_county_requests_30d": recent_county_30,
+        "recent_blood_type_requests_30d": recent_type_30,
+        "recent_blood_type_requests_90d": recent_type_90,
+        "county_stock_total": county_stock_total,
+        "county_stock_pressure": county_pressure,
+        "bank_count_in_county": bank_counts.get(county, 0),
+        "source": "actual",
+    }
+
+
+def _build_training_rows() -> list[dict[str, Any]]:
+    requests = BloodRequest.query.join(Hospital).order_by(BloodRequest.created_at.asc(), BloodRequest.id.asc()).all()
+    stock_totals, bank_counts = _stock_by_county()
+    request_history: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+
+    for request in requests:
+        feature_row = _training_feature_row(request, request_history, stock_totals, bank_counts)
+        rows.append(
+            {
+                "request_id": request.id,
+                "created_at": request.created_at or datetime.utcnow(),
+                "features": feature_row,
+                "target": max(1.0, float(request.units_needed or 1)),
+            }
+        )
+        request_history.append(
+            {
+                "request_id": request.id,
+                "created_at": request.created_at or datetime.utcnow(),
+                "hospital_id": request.hospital_id,
+                "county": feature_row["county"],
+                "blood_type": feature_row["blood_type"],
+            }
+        )
+
+    return rows
+
+
+def _split_train_validation(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not rows:
+        return [], []
+    validation_size = max(1, int(len(rows) * 0.2)) if len(rows) > 4 else 1
+    if validation_size >= len(rows):
+        validation_size = 1
+    split_index = max(1, len(rows) - validation_size)
+    return rows[:split_index], rows[split_index:]
+
+
+def _model_candidates() -> list[tuple[str, Any]]:
+    if not SKLEARN_AVAILABLE:
+        return []
+    return [
+        ("dummy_mean", DummyRegressor(strategy="mean")),
+        ("ridge", Ridge(alpha=1.0, random_state=42)),
+        ("random_forest", RandomForestRegressor(n_estimators=300, random_state=42, min_samples_leaf=2, n_jobs=1)),
+        ("gradient_boosting", GradientBoostingRegressor(random_state=42)),
+        ("hist_gradient_boosting", HistGradientBoostingRegressor(random_state=42, learning_rate=0.08, max_depth=6)),
+    ]
+
+
+def _mape(y_true: list[float], y_pred: list[float]) -> float:
+    if not y_true:
+        return 0.0
+    ratios = []
+    for actual, predicted in zip(y_true, y_pred):
+        denom = max(abs(actual), 1e-6)
+        ratios.append(abs(actual - predicted) / denom)
+    return sum(ratios) / len(ratios)
+
+
+def _evaluate_candidate(name: str, model: Any, train_rows: list[dict[str, Any]], validation_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not SKLEARN_AVAILABLE or not train_rows:
+        return None
+
+    pipeline = Pipeline(
+        [
+            ("vectorizer", DictVectorizer(sparse=False)),
+            ("model", model),
+        ]
+    )
+
+    train_features = [row["features"] for row in train_rows]
+    train_targets = [float(row["target"]) for row in train_rows]
+    try:
+        pipeline.fit(train_features, train_targets)
+        validation_features = [row["features"] for row in validation_rows] if validation_rows else train_features
+        validation_targets = [float(row["target"]) for row in validation_rows] if validation_rows else train_targets
+        predictions = list(pipeline.predict(validation_features))
+        mae = float(mean_absolute_error(validation_targets, predictions)) if mean_absolute_error else 0.0
+        rmse = float(math.sqrt(mean_squared_error(validation_targets, predictions))) if mean_squared_error else 0.0
+        mape = _mape(validation_targets, predictions)
+    except Exception:
+        return None
+
+    return {
+        "name": name,
+        "pipeline": pipeline,
+        "mae": round(mae, 4),
+        "rmse": round(rmse, 4),
+        "mape": round(mape, 4),
+        "training_rows": len(train_rows),
+        "validation_rows": len(validation_rows),
+    }
+
+
+def _select_best_model(train_rows: list[dict[str, Any]], validation_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    evaluated: list[dict[str, Any]] = []
+    for name, model in _model_candidates():
+        result = _evaluate_candidate(name, model, train_rows, validation_rows)
+        if result is not None:
+            evaluated.append(result)
+
+    if not evaluated:
+        return {
+            "name": "baseline",
+            "pipeline": None,
+            "mae": None,
+            "rmse": None,
+            "mape": None,
+            "training_rows": len(train_rows),
+            "validation_rows": len(validation_rows),
+            "evaluated_models": [],
+        }
+
+    evaluated.sort(key=lambda item: (item["mae"], item["rmse"], item["name"]))
+    best = evaluated[0]
+    best["evaluated_models"] = [
+        {"name": item["name"], "mae": item["mae"], "rmse": item["rmse"], "mape": item["mape"]}
+        for item in evaluated
+    ]
+    return best
+
+
+def _predict_pipeline(pipeline: Any | None, feature_row: dict[str, Any], stats: dict[str, Any]) -> float:
+    if pipeline is not None:
+        try:
+            predicted = pipeline.predict([feature_row])[0]
+            return max(0.0, float(predicted))
+        except Exception:
+            pass
+
+    county = str(feature_row.get("county") or "Unknown")
+    hospital_key = feature_row.get("hospital_id")
+    blood_type = str(feature_row.get("blood_type") or "O+")
+    urgency_level = str(feature_row.get("urgency_level") or "normal")
+    base = stats.get("hospital_mean", {}).get(hospital_key, stats.get("county_mean", {}).get(county, stats.get("global_mean", 4.0)))
+    weekend_factor = 1.12 if feature_row.get("is_weekend") else 1.0
+    holiday_factor = 1.1 if feature_row.get("holiday_flag") else 1.0
+    type_factor = BLOOD_TYPE_FACTORS.get(blood_type, 1.0)
+    urgency_factor = 1.12 if urgency_level == "urgent" else 0.97
+    pressure_factor = 1.0 + min(float(feature_row.get("county_stock_pressure", 0.0)), 2.5) * 0.10
+    recent_factor = 1.0 + min(float(feature_row.get("recent_hospital_requests_30d", 0.0)) / 18.0, 1.2) * 0.20
+    predicted = base * weekend_factor * holiday_factor * type_factor * urgency_factor * pressure_factor * recent_factor
+    return max(0.0, float(predicted))
 
 
 def _synthetic_request_rows(hospitals: list[Hospital], stats: dict[str, Any], reference_date: datetime | None = None) -> list[dict[str, Any]]:
@@ -487,8 +702,10 @@ def _save_bundle(bundle: dict[str, Any]) -> None:
                 {
                     "fingerprint": bundle["fingerprint"],
                     "trained_at": bundle["trained_at"],
-                    "actual_rows": bundle["stats"].get("actual_rows", 0),
-                    "synthetic_rows": bundle["stats"].get("synthetic_rows", 0),
+                    "training_rows": bundle["stats"].get("training_rows", 0),
+                    "train_rows": bundle["stats"].get("train_rows", 0),
+                    "validation_rows": bundle["stats"].get("validation_rows", 0),
+                    "selected_model": bundle["stats"].get("selected_model"),
                     "sklearn_available": bundle["sklearn_available"],
                 },
                 handle,
@@ -499,47 +716,6 @@ def _save_bundle(bundle: dict[str, Any]) -> None:
         pass
 
 
-def _build_model(samples: list[dict[str, Any]], targets: list[float]) -> Any | None:
-    if not SKLEARN_AVAILABLE or not samples:
-        return None
-    model = RandomForestRegressor(
-        n_estimators=180,
-        random_state=42,
-        min_samples_leaf=2,
-        n_jobs=1,
-    )
-    vectorizer = DictVectorizer(sparse=False)
-    features = vectorizer.fit_transform(samples)
-    model.fit(features, targets)
-    return {
-        "vectorizer": vectorizer,
-        "model": model,
-    }
-
-
-def _predict_with_bundle(bundle: dict[str, Any], feature_row: dict[str, Any]) -> float:
-    model_payload = bundle.get("model_payload")
-    if model_payload and model_payload.get("vectorizer") and model_payload.get("model"):
-        vectorized = model_payload["vectorizer"].transform([feature_row])
-        predicted = model_payload["model"].predict(vectorized)[0]
-        return max(0.0, float(predicted))
-
-    stats = bundle.get("stats", {})
-    county = str(feature_row.get("county") or "Unknown")
-    hospital_key = feature_row.get("hospital_id")
-    blood_type = str(feature_row.get("blood_type") or "O+")
-    urgency_level = str(feature_row.get("urgency_level") or "normal")
-    base = stats.get("hospital_mean", {}).get(hospital_key, stats.get("county_mean", {}).get(county, stats.get("global_mean", 4.0)))
-    weekend_factor = 1.12 if feature_row.get("is_weekend") else 1.0
-    holiday_factor = 1.1 if feature_row.get("holiday_flag") else 1.0
-    type_factor = BLOOD_TYPE_FACTORS.get(blood_type, 1.0)
-    urgency_factor = 1.12 if urgency_level == "urgent" else 0.97
-    pressure_factor = 1.0 + min(float(feature_row.get("county_stock_pressure", 0.0)), 2.5) * 0.10
-    recent_factor = 1.0 + min(float(feature_row.get("recent_hospital_requests_30d", 0.0)) / 18.0, 1.2) * 0.20
-    predicted = base * weekend_factor * holiday_factor * type_factor * urgency_factor * pressure_factor * recent_factor
-    return max(0.0, float(predicted))
-
-
 def _build_bundle(force_retrain: bool = False) -> dict[str, Any]:
     fingerprint = _data_fingerprint()
     if not force_retrain:
@@ -548,24 +724,28 @@ def _build_bundle(force_retrain: bool = False) -> dict[str, Any]:
             return cached
 
     stats = _training_stats()
-    actual_rows = _actual_request_rows(stats)
-    synthetic_rows = _synthetic_request_rows(stats["hospitals"], stats)
-    training_rows = actual_rows + synthetic_rows
-    samples = [row["features"] for row in training_rows]
-    targets = [float(row["target"]) for row in training_rows]
+    training_rows = _build_training_rows()
+    training_rows.sort(key=lambda item: (item["created_at"], item["request_id"]))
+    train_rows, validation_rows = _split_train_validation(training_rows)
+    model_selection = _select_best_model(train_rows, validation_rows)
 
-    global_mean = sum(targets) / len(targets) if targets else 4.0
+    actual_targets = [float(row["target"]) for row in training_rows]
+    global_mean = sum(actual_targets) / len(actual_targets) if actual_targets else 4.0
     stats["global_mean"] = global_mean
-    stats["actual_rows"] = len(actual_rows)
-    stats["synthetic_rows"] = len(synthetic_rows)
     stats["training_rows"] = len(training_rows)
+    stats["validation_rows"] = len(validation_rows)
+    stats["train_rows"] = len(train_rows)
+    stats["candidate_models"] = model_selection.get("evaluated_models", [])
+    stats["selected_model"] = model_selection["name"]
+    stats["selected_model_mae"] = model_selection.get("mae")
+    stats["selected_model_rmse"] = model_selection.get("rmse")
+    stats["selected_model_mape"] = model_selection.get("mape")
 
-    model_payload = _build_model(samples, targets)
     bundle = {
         "fingerprint": fingerprint,
         "trained_at": datetime.utcnow().isoformat(),
         "sklearn_available": SKLEARN_AVAILABLE,
-        "model_payload": model_payload,
+        "model_selection": model_selection,
         "stats": stats,
     }
     _save_bundle(bundle)
@@ -610,7 +790,7 @@ def _forecast_rows_for_hospital(bundle: dict[str, Any], hospital: Hospital, hori
                 "bank_count_in_county": stats.get("bank_count", {}).get(county, 0),
                 "source": "forecast",
             }
-            prediction = round(_predict_with_bundle(bundle, feature_row), 2)
+            prediction = round(_predict_pipeline(bundle.get("model_selection", {}).get("pipeline"), feature_row, stats), 2)
             daily_sum += prediction
             by_blood_type[blood_type].append({
                 "date": moment.date().isoformat(),
@@ -643,12 +823,17 @@ def _forecast_rows_for_hospital(bundle: dict[str, Any], hospital: Hospital, hori
         "training_summary": {
             "trained_at": bundle["trained_at"],
             "sklearn_available": bundle["sklearn_available"],
-            "actual_rows": bundle["stats"].get("actual_rows", 0),
-            "synthetic_rows": bundle["stats"].get("synthetic_rows", 0),
+            "train_rows": bundle["stats"].get("train_rows", 0),
+            "validation_rows": bundle["stats"].get("validation_rows", 0),
             "training_rows": bundle["stats"].get("training_rows", 0),
+            "candidate_models": bundle["stats"].get("candidate_models", []),
+            "selected_model": bundle["stats"].get("selected_model"),
+            "selected_model_mae": bundle["stats"].get("selected_model_mae"),
+            "selected_model_rmse": bundle["stats"].get("selected_model_rmse"),
+            "selected_model_mape": bundle["stats"].get("selected_model_mape"),
         },
-        "refresh_policy": "Auto-refreshes when request, stock, or donation data changes.",
-        "is_illustrative": True,
+        "refresh_policy": "Refreshes automatically when request, stock, or donation data changes.",
+        "is_operational": True,
     }
 
 
@@ -658,9 +843,9 @@ def get_hospital_forecast(hospital: Hospital | None, horizon_days: int = HORIZON
             "hospital": None,
             "daily_totals": [],
             "blood_type_summary": [],
-            "training_summary": {"trained_at": None, "sklearn_available": SKLEARN_AVAILABLE, "actual_rows": 0, "synthetic_rows": 0, "training_rows": 0},
-            "refresh_policy": "Auto-refreshes when request, stock, or donation data changes.",
-            "is_illustrative": True,
+            "training_summary": {"trained_at": None, "sklearn_available": SKLEARN_AVAILABLE, "train_rows": 0, "validation_rows": 0, "training_rows": 0, "candidate_models": [], "selected_model": None, "selected_model_mae": None, "selected_model_rmse": None, "selected_model_mape": None},
+            "refresh_policy": "Refreshes automatically when request, stock, or donation data changes.",
+            "is_operational": True,
         }
     bundle = _build_bundle()
     return _forecast_rows_for_hospital(bundle, hospital, horizon_days=horizon_days)
@@ -690,12 +875,17 @@ def get_national_forecast_summary(horizon_days: int = 7) -> dict[str, Any]:
         "training_summary": {
             "trained_at": bundle["trained_at"],
             "sklearn_available": bundle["sklearn_available"],
-            "actual_rows": bundle["stats"].get("actual_rows", 0),
-            "synthetic_rows": bundle["stats"].get("synthetic_rows", 0),
+            "train_rows": bundle["stats"].get("train_rows", 0),
+            "validation_rows": bundle["stats"].get("validation_rows", 0),
             "training_rows": bundle["stats"].get("training_rows", 0),
+            "candidate_models": bundle["stats"].get("candidate_models", []),
+            "selected_model": bundle["stats"].get("selected_model"),
+            "selected_model_mae": bundle["stats"].get("selected_model_mae"),
+            "selected_model_rmse": bundle["stats"].get("selected_model_rmse"),
+            "selected_model_mape": bundle["stats"].get("selected_model_mape"),
         },
-        "refresh_policy": "Auto-refreshes when request, stock, or donation data changes.",
-        "is_illustrative": True,
+        "refresh_policy": "Refreshes automatically when request, stock, or donation data changes.",
+        "is_operational": True,
     }
 
 
@@ -784,3 +974,7 @@ def load_county_geojson() -> dict[str, Any]:
             return json.load(handle)
     except Exception:
         return {"type": "FeatureCollection", "features": []}
+
+
+def get_county_geojson() -> dict[str, Any]:
+    return load_county_geojson()
