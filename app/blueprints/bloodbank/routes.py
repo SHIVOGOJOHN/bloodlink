@@ -6,6 +6,7 @@ from flask_login import current_user
 from app.extensions import db
 from app.models import BloodBank, BloodBankStock, BloodRequest
 from app.utils.auth import role_required
+from app.utils.forecast import invalidate_forecast_cache
 
 bloodbank_bp = Blueprint("bloodbank", __name__, url_prefix="/bloodbank")
 
@@ -117,6 +118,7 @@ def update_stock():
             pass
             
     db.session.commit()
+    invalidate_forecast_cache()
     flash("Stock updated successfully.", "success")
     return redirect(url_for("bloodbank.dashboard"))
 
@@ -147,6 +149,7 @@ def fulfill_request(request_id):
     request_record.status = "dispatched"
     request_record.fulfilled_by_bloodbank_id = bloodbank.id
     db.session.commit()
+    invalidate_forecast_cache()
     flash(
         f"Request dispatched — {units_fulfilled} unit(s) of {request_record.blood_type} sent in transit. "
         f"Remaining stock: {remaining} unit(s).",

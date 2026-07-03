@@ -1,18 +1,20 @@
 {% extends "base.html" %}
+
 {% block title %}Hospital Dashboard — BloodLink{% endblock %}
 
-{% block content %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
 
-  {# ── Page header ──────────────────────────────────────────── #}
+{% block content %}
   <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
     <div>
       <h1 class="page-title">Hospital Dashboard</h1>
-      <p class="page-subtitle">Check blood bank stock, create requests, and coordinate with matched donors.</p>
+      <p class="page-subtitle">Check blood bank stock, create requests, coordinate with matched donors, and view an illustrative demand forecast.</p>
     </div>
     <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
 
-  {# ── Flash messages ───────────────────────────────────────── #}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -21,7 +23,6 @@
     {% endif %}
   {% endwith %}
 
-  {# ── Facility identity banner ─────────────────────────────── #}
   {% if hospital %}
   <div class="card-container mb-4">
     <div class="d-flex align-items-center gap-3">
@@ -42,7 +43,6 @@
   </div>
   {% endif %}
 
-  {# ── National Blood Bank Stock Panel (Step 1 — Check stock first) ── #}
   <div class="card-container mb-4">
     <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
       <div>
@@ -87,10 +87,7 @@
     {% endif %}
   </div>
 
-  {# ── Main two-column grid ─────────────────────────────────── #}
   <div class="row g-4">
-
-    {# Left — Create Request #}
     <div class="col-md-5">
       <div class="card-container h-100" style="margin-bottom:0;">
         <div class="fw-semibold mb-1" style="font-size:1rem;">Create Blood Request</div>
@@ -126,10 +123,7 @@
       </div>
     </div>
 
-    {# Right — Requests + Matched Donors #}
     <div class="col-md-7">
-
-      {# Your recent requests #}
       <div class="card-container">
         <div class="fw-semibold mb-3" style="font-size:1rem;">Your Recent Requests</div>
         {% if requests %}
@@ -163,16 +157,12 @@
             </div>
             {% if req.fulfilled_by_bank %}
             <div class="tiny text-muted mt-1" style="font-size:0.75rem;">
-              {{ "Dispatched by" if req.status == "dispatched" else "Fulfilled by" }}: 
-              <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=req.fulfilled_by_bank.id) }}"
-                class="fw-semibold text-decoration-none" style="color:var(--primary);">
-                {{ req.fulfilled_by_bank.name }}
-              </a>
+              {{ "Dispatched by" if req.status == "dispatched" else "Fulfilled by" }}:
+              <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=req.fulfilled_by_bank.id) }}" class="fw-semibold text-decoration-none" style="color:var(--primary);">{{ req.fulfilled_by_bank.name }}</a>
               ({{ req.fulfilled_by_bank.county }} County)
             </div>
             {% endif %}
           </li>
-
           {% endfor %}
         </ul>
         {% else %}
@@ -180,7 +170,6 @@
         {% endif %}
       </div>
 
-      {# Matched donors — shown when there is an open request #}
       <div class="card-container" style="margin-bottom:0;">
         <div class="fw-semibold mb-1" style="font-size:1rem;">
           Matched Donors
@@ -204,7 +193,6 @@
           <div class="match-item">
             <div class="d-flex justify-content-between align-items-start gap-3">
               <div class="d-flex gap-3 align-items-start flex-grow-1">
-                {# Donor avatar #}
                 {% if match.donor.profile_pic_url %}
                   <img src="{{ match.donor.profile_pic_url }}" alt="{{ match.donor.name }}"
                     style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;margin-top:2px;">
@@ -216,8 +204,7 @@
 
                 <div class="flex-grow-1">
                   <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}"
-                      class="fw-semibold text-decoration-none" style="color:var(--primary);">{{ match.donor.name }}</a>
+                    <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}" class="fw-semibold text-decoration-none" style="color:var(--primary);">{{ match.donor.name }}</a>
                     <span class="badge bg-primary">{{ match.score }}/100</span>
                     {% if match.donor.blood_type == 'O-' %}
                     <span class="badge bg-danger">Universal Donor</span>
@@ -241,7 +228,6 @@
                 </div>
               </div>
 
-              {# Confirm donation — links to latest open request #}
               <div class="flex-shrink-0">
                 {% if latest_request %}
                 <form method="POST" action="{{ url_for('hospital.confirm_donation') }}">
@@ -262,8 +248,92 @@
         <div class="text-muted tiny">Submit a blood request above to activate donor matching.</div>
         {% endif %}
       </div>
+    </div>
+  </div>
 
-    </div>{# end col-md-7 #}
-  </div>{# end row #}
+  {% if forecast_panel %}
+  <div class="card-container mt-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+      <div>
+        <div class="fw-semibold" style="font-size:1rem;">Illustrative Demand Forecast</div>
+        <div class="tiny text-muted">Shared model trained on pooled hospital requests. It refreshes automatically when request, stock, or donation data changes.</div>
+      </div>
+      <span class="badge bg-secondary">Auto-refreshing</span>
+    </div>
 
+    <div class="stats-grid mt-3">
+      <div class="stat-card">
+        <div class="stat-label">Training rows</div>
+        <div class="stat-value">{{ forecast_panel.training_summary.training_rows }}</div>
+        <div class="stat-sub">actual + synthetic samples</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Actual rows</div>
+        <div class="stat-value">{{ forecast_panel.training_summary.actual_rows }}</div>
+        <div class="stat-sub">approved hospital requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Synthetic rows</div>
+        <div class="stat-value">{{ forecast_panel.training_summary.synthetic_rows }}</div>
+        <div class="stat-sub">structured augmentation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Model</div>
+        <div class="stat-value" style="font-size:1rem;">{% if forecast_panel.training_summary.sklearn_available %}RandomForest{% else %}Baseline{% endif %}</div>
+        <div class="stat-sub">trained {{ forecast_panel.training_summary.trained_at[:10] if forecast_panel.training_summary.trained_at else 'n/a' }}</div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      {% for item in forecast_panel.blood_type_summary[:4] %}
+      <div class="col-md-3">
+        <div class="stat-card h-100">
+          <div class="stat-label">{{ item.blood_type }}</div>
+          <div class="stat-value">{{ item.average_units }}</div>
+          <div class="stat-sub">avg predicted units/day</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="mt-4" style="height:280px;">
+      <canvas id="forecast-chart"></canvas>
+    </div>
+
+    <div class="tiny text-muted mt-3">{{ forecast_panel.refresh_policy }} This is planning support only, not a clinical decision engine.</div>
+  </div>
+
+  <script>
+    (function () {
+      const data = {{ forecast_panel | tojson }};
+      const canvas = document.getElementById('forecast-chart');
+      if (!canvas || !data || !data.daily_totals || !data.daily_totals.length) return;
+      const labels = data.daily_totals.map((item) => item.date);
+      const values = data.daily_totals.map((item) => item.predicted_units);
+      new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Predicted units needed',
+            data: values,
+            borderColor: '#0f766e',
+            backgroundColor: 'rgba(15, 118, 110, 0.12)',
+            fill: true,
+            tension: 0.25,
+            pointRadius: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+          },
+        },
+      });
+    })();
+  </script>
+  {% endif %}
 {% endblock %}

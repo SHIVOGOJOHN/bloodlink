@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 from app.models import BloodBank, BloodBankStock, BloodRequest, Donor, DonationRecord, Hospital
 from app.utils.auth import role_required
+from app.utils.forecast import get_hospital_forecast, invalidate_forecast_cache
 from app.utils.matching import rank_donors_for_request
 
 hospital_bp = Blueprint("hospital", __name__, url_prefix="/hospital")
@@ -40,6 +41,7 @@ def dashboard():
                 )
                 db.session.add(request_record)
                 db.session.commit()
+                invalidate_forecast_cache()
                 flash("Blood request created successfully.", "success")
             except SQLAlchemyError as exc:
                 db.session.rollback()
@@ -88,6 +90,8 @@ def dashboard():
             # Always run matching so hospital can see donor options
             matching_results = rank_donors_for_request(latest_open_request.blood_type, hospital)
 
+    forecast_panel = get_hospital_forecast(hospital)
+
 
     return render_template(
         "hospital/dashboard.html",
@@ -97,6 +101,7 @@ def dashboard():
         local_stock=local_stock,
         matching_results=matching_results,
         latest_request=latest_open_request,
+        forecast_panel=forecast_panel,
     )
 
 
@@ -234,6 +239,7 @@ def confirm_donation():
 
     db.session.add(donation)
     db.session.commit()
+    invalidate_forecast_cache()
 
     flash(
         f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}).",

@@ -1,11 +1,17 @@
 {% extends "base.html" %}
+
 {% block title %}Admin Dashboard - BloodLink{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
     <div>
       <h1>Admin Dashboard</h1>
-      <p>Monitor users, requests, notifications, donations, and reimbursement activity.</p>
+      <p>Monitor users, requests, notifications, donations, reimbursement activity, and county-level stock pressure.</p>
     </div>
     <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
@@ -31,6 +37,117 @@
     <div class="stat-label">Reimbursements</div>
     <div class="stat-value">{{ reimbursements|length }}</div>
     <div class="stat-sub">requests tracked</div>
+  </div>
+</div>
+
+<div class="card-container mb-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <div class="fw-semibold" style="font-size:1rem;">National Monitoring Map</div>
+      <div class="tiny text-muted mt-1">County-level stock pressure refreshed from the same pooled operational data used for planning. Green means healthy, amber means watch, red means critical.</div>
+    </div>
+    <span class="badge bg-secondary">Leaflet / county centroids</span>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div id="county-map" style="height:460px;border:1px solid var(--border);border-radius:12px;"></div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card-container h-100 mb-0" style="padding:18px;">
+        <div class="fw-semibold mb-2">County Summary</div>
+        <div class="tiny text-muted mb-3">Highest 30-day request pressure.</div>
+        <ul class="list-unstyled mb-0">
+          {% for row in county_map.summary[:8] %}
+          <li class="py-2 border-bottom">
+            <div class="d-flex justify-content-between gap-2 align-items-start">
+              <div>
+                <div class="fw-semibold">{{ row.county }}</div>
+                <div class="tiny text-muted">Stock {{ row.stock_units }} units · Requests {{ row.request_units_30d }} · Banks {{ row.bank_count }}</div>
+              </div>
+              <span class="badge {% if row.status == 'critical' %}bg-danger{% elif row.status == 'watch' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                {{ row.status|title }}
+              </span>
+            </div>
+            {% if row.top_blood_types %}
+            <div class="tiny text-muted mt-1">Top blood types: {{ row.top_blood_types|join(', ') }}</div>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="text-muted">No county data available yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-container mb-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <div class="fw-semibold" style="font-size:1rem;">Illustrative National Forecast</div>
+      <div class="tiny text-muted mt-1">The forecast retrains automatically when request, stock, or donation data changes. This is planning support only.</div>
+    </div>
+    <span class="badge bg-secondary">Shared model</span>
+  </div>
+
+  <div class="stats-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Training rows</div>
+      <div class="stat-value">{{ national_forecast.training_summary.training_rows }}</div>
+      <div class="stat-sub">actual + synthetic</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Actual rows</div>
+      <div class="stat-value">{{ national_forecast.training_summary.actual_rows }}</div>
+      <div class="stat-sub">approved hospital requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Synthetic rows</div>
+      <div class="stat-value">{{ national_forecast.training_summary.synthetic_rows }}</div>
+      <div class="stat-sub">structured augmentation</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Model</div>
+      <div class="stat-value" style="font-size:1rem;">{% if national_forecast.training_summary.sklearn_available %}RandomForest{% else %}Baseline{% endif %}</div>
+      <div class="stat-sub">trained {{ national_forecast.training_summary.trained_at[:10] if national_forecast.training_summary.trained_at else 'n/a' }}</div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card-container h-100" style="padding:18px;">
+        <div class="fw-semibold mb-2">Next 7 days</div>
+        <ul class="list-unstyled mb-0">
+          {% for item in national_forecast.daily_totals %}
+          <li class="py-2 border-bottom d-flex justify-content-between gap-2">
+            <span>{{ item.date }}</span>
+            <span class="fw-semibold">{{ item.predicted_units }} units</span>
+          </li>
+          {% else %}
+          <li class="text-muted">No forecast data available.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card-container h-100" style="padding:18px;">
+        <div class="fw-semibold mb-2">County risk outlook</div>
+        <ul class="list-unstyled mb-0">
+          {% for county in national_forecast.top_counties %}
+          <li class="py-2 border-bottom d-flex justify-content-between gap-2 align-items-start">
+            <div>
+              <div class="fw-semibold">{{ county.county }}</div>
+              <div class="tiny text-muted">Projected load across the horizon</div>
+            </div>
+            <span class="badge bg-secondary">{{ county.predicted_units }} units</span>
+          </li>
+          {% else %}
+          <li class="text-muted">No forecast data available.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -60,4 +177,59 @@
     </div>
   </div>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  (function () {
+    const mapData = {{ county_map | tojson }};
+    const mapElement = document.getElementById('county-map');
+    if (!mapElement || typeof L === 'undefined' || !mapData) return;
+
+    const map = L.map('county-map', { scrollWheelZoom: false }).setView([-0.5, 37.2], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 12,
+    }).addTo(map);
+
+    function colorForStatus(status) {
+      if (status === 'critical') return '#b91c1c';
+      if (status === 'watch') return '#d97706';
+      return '#15803d';
+    }
+
+    function popupHtml(props) {
+      const topTypes = Array.isArray(props.top_blood_types) && props.top_blood_types.length ? props.top_blood_types.join(', ') : 'n/a';
+      return [
+        '<div style="min-width:190px;">',
+        '<strong>' + props.county + '</strong><br>',
+        'Stock: ' + props.stock_units + ' units<br>',
+        'Requests (30d): ' + props.request_units_30d + '<br>',
+        'Banks: ' + props.bank_count + '<br>',
+        'Status: ' + props.status + '<br>',
+        'Top types: ' + topTypes,
+        '</div>',
+      ].join('');
+    }
+
+    const layer = L.geoJSON(mapData, {
+      pointToLayer: function (feature, latlng) {
+        const color = colorForStatus(feature.properties.status);
+        return L.circleMarker(latlng, {
+          radius: 8,
+          color: color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.8,
+        });
+      },
+      onEachFeature: function (feature, layer) {
+        layer.bindPopup(popupHtml(feature.properties));
+      },
+    }).addTo(map);
+
+    if (layer.getBounds && layer.getBounds().isValid()) {
+      map.fitBounds(layer.getBounds(), { padding: [18, 18] });
+    }
+  })();
+</script>
 {% endblock %}
