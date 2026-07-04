@@ -189,3 +189,22 @@ class ReimbursementRequest(db.Model):
     approved_at = db.Column(db.DateTime, nullable=True)
     mpesa_transaction_id = db.Column(db.String(255), nullable=True)
     disbursed_at = db.Column(db.DateTime, nullable=True)
+
+
+class ForecastTrainingRun(db.Model):
+    __tablename__ = table_name("forecast_training_runs")
+
+    id = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    fingerprint = db.Column(db.String(128), nullable=False, index=True)
+    model_name = db.Column(db.String(120), nullable=False)
+    training_rows = db.Column(db.Integer, default=0, nullable=False)
+    train_rows = db.Column(db.Integer, default=0, nullable=False)
+    validation_rows = db.Column(db.Integer, default=0, nullable=False)
+    mae = db.Column(db.Float, nullable=True)
+    rmse = db.Column(db.Float, nullable=True)
+    mape = db.Column(db.Float, nullable=True)
+    artifact_path = db.Column(db.String(500), nullable=False)
+    metrics_json = db.Column(db.Text, nullable=True)
+    is_current = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

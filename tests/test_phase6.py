@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from app import create_app
 from app.extensions import db
-from app.models import Hospital, User
+from app.models import ForecastTrainingRun, Hospital, User
 from app.utils.forecast import get_county_map_data, get_hospital_forecast, get_national_forecast_summary
 
 
@@ -38,6 +38,7 @@ class Phase6Tests(unittest.TestCase):
             self.assertGreater(len(forecast["blood_type_summary"]), 0)
             self.assertIn("refresh_policy", forecast)
             self.assertIn("selected_model", forecast["training_summary"])
+            self.assertGreaterEqual(ForecastTrainingRun.query.count(), 1)
 
     def test_county_map_service_returns_summary(self):
         if not self._db_is_available():

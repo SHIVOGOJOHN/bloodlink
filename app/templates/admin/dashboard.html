@@ -85,6 +85,53 @@
 <div class="card-container mb-4">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
+      <div class="fw-semibold" style="font-size:1rem;">Forecast Training History</div>
+      <div class="tiny text-muted mt-1">Latest model runs stored as versioned artifacts for audit and rollback.</div>
+    </div>
+    <span class="badge bg-secondary">Last 10 runs</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Version</th>
+          <th>Model</th>
+          <th>Rows</th>
+          <th>MAE</th>
+          <th>RMSE</th>
+          <th>MAPE</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in forecast_runs %}
+        <tr>
+          <td class="tiny text-muted">{{ run.version }}</td>
+          <td>{{ run.model_name }}</td>
+          <td>{{ run.training_rows }} / {{ run.train_rows }} / {{ run.validation_rows }}</td>
+          <td>{{ '%.3f'|format(run.mae) if run.mae is not none else 'n/a' }}</td>
+          <td>{{ '%.3f'|format(run.rmse) if run.rmse is not none else 'n/a' }}</td>
+          <td>{{ '%.3f'|format(run.mape) if run.mape is not none else 'n/a' }}</td>
+          <td>
+            {% if run.is_current %}
+              <span class="badge bg-success">Current</span>
+            {% else %}
+              <span class="badge bg-secondary">Archived</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-muted">No forecast training runs recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-container mb-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
       <div class="fw-semibold" style="font-size:1rem;">Operational National Forecast</div>
       <div class="tiny text-muted mt-1">Multiple models are trained on actual request history, evaluated chronologically, and the best performer is selected automatically when request, stock, or donation data changes.</div>
     </div>

@@ -23,6 +23,7 @@ from .blueprints.admin.routes import admin_bp
 from .blueprints.ussd.routes import ussd_bp
 from .blueprints.api.routes import api_bp
 from .blueprints.reimbursement.routes import reimbursement_bp
+from .utils.forecast import start_forecast_retraining_scheduler
 
 
 def init_database(app):
@@ -107,6 +108,7 @@ def create_app(config_name=None):
     app.register_blueprint(reimbursement_bp)
 
     init_database(app)
+    start_forecast_retraining_scheduler(app)
 
     @app.context_processor
     def inject_counties():

@@ -5,6 +5,8 @@ import json
 import math
 import pickle
 import random
+import threading
+import time
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -14,7 +16,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from app.extensions import db
-from app.models import BloodBank, BloodBankStock, BloodRequest, DonationRecord, Hospital
+from app.models import BloodBank, BloodBankStock, BloodRequest, DonationRecord, ForecastTrainingRun, Hospital
 from app.utils.matching import COUNTY_DISTANCE
 
 try:  # scikit-learn is required by the plan, but the app should still degrade gracefully.
@@ -79,6 +81,8 @@ BLOOD_TYPE_FACTORS = {
 HORIZON_DAYS = 14
 TRAINING_LOOKBACK_DAYS = 180
 FORECAST_CACHE_DIR_NAME = "forecast"
+FORECAST_ARTIFACTS_DIR_NAME = "artifacts"
+FORECAST_CURRENT_FILENAME = "forecast_current.pkl"
 FORECAST_BUNDLE_FILENAME = "forecast_bundle.pkl"
 FORECAST_META_FILENAME = "forecast_meta.json"
 DEFAULT_COUNTY_COORDS = {
@@ -142,8 +146,19 @@ def _cache_dir() -> Path:
     return cache_dir
 
 
+def _artifacts_dir() -> Path:
+    artifacts_dir = _cache_dir() / FORECAST_ARTIFACTS_DIR_NAME
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    return artifacts_dir
+
+
 def _bundle_path() -> Path:
-    return _cache_dir() / FORECAST_BUNDLE_FILENAME
+    return _cache_dir() / FORECAST_CURRENT_FILENAME
+
+
+def _versioned_bundle_path(version: str) -> Path:
+    safe_version = version.replace("/", "-").replace("\\", "-")
+    return _artifacts_dir() / f"{safe_version}.pkl"
 
 
 def _meta_path() -> Path:
@@ -676,6 +691,28 @@ def _timestamp_or_empty(value: Any) -> str:
 
 
 def _load_cached_bundle() -> dict[str, Any] | None:
+    current_run = ForecastTrainingRun.query.filter_by(is_current=True).order_by(ForecastTrainingRun.created_at.desc()).first()
+    if current_run and current_run.artifact_path:
+        artifact_path = Path(current_run.artifact_path)
+        if artifact_path.exists():
+            try:
+                with artifact_path.open("rb") as handle:
+                    bundle = pickle.load(handle)
+                bundle["meta"] = {
+                    "version": current_run.version,
+                    "trained_at": current_run.created_at.isoformat(),
+                    "selected_model": current_run.model_name,
+                    "training_rows": current_run.training_rows,
+                    "train_rows": current_run.train_rows,
+                    "validation_rows": current_run.validation_rows,
+                    "mae": current_run.mae,
+                    "rmse": current_run.rmse,
+                    "mape": current_run.mape,
+                }
+                return bundle
+            except Exception:
+                pass
+
     bundle_path = _bundle_path()
     meta_path = _meta_path()
     if not bundle_path.exists() or not meta_path.exists():
@@ -716,6 +753,59 @@ def _save_bundle(bundle: dict[str, Any]) -> None:
         pass
 
 
+def _format_version(trained_at: str, fingerprint: str) -> str:
+    stamp = trained_at.replace(":", "").replace("-", "").replace(".", "")
+    return f"{stamp}-{fingerprint[:10]}"
+
+
+def _write_training_run(bundle: dict[str, Any]) -> None:
+    stats = bundle.get("stats", {})
+    version = _format_version(bundle["trained_at"], bundle["fingerprint"])
+    artifact_path = _versioned_bundle_path(version)
+
+    try:
+        with artifact_path.open("wb") as handle:
+            pickle.dump(bundle, handle)
+        with _bundle_path().open("wb") as handle:
+            pickle.dump(bundle, handle)
+    except Exception:
+        return
+
+    try:
+        current_runs = ForecastTrainingRun.query.filter_by(is_current=True).all()
+        for run in current_runs:
+            run.is_current = False
+
+        metrics = {
+            "candidate_models": stats.get("candidate_models", []),
+            "selected_model": stats.get("selected_model"),
+            "selected_model_mae": stats.get("selected_model_mae"),
+            "selected_model_rmse": stats.get("selected_model_rmse"),
+            "selected_model_mape": stats.get("selected_model_mape"),
+            "fingerprint": bundle["fingerprint"],
+            "trained_at": bundle["trained_at"],
+        }
+        run = ForecastTrainingRun(
+            version=version,
+            fingerprint=bundle["fingerprint"],
+            model_name=stats.get("selected_model") or "baseline",
+            training_rows=stats.get("training_rows", 0),
+            train_rows=stats.get("train_rows", 0),
+            validation_rows=stats.get("validation_rows", 0),
+            mae=stats.get("selected_model_mae"),
+            rmse=stats.get("selected_model_rmse"),
+            mape=stats.get("selected_model_mape"),
+            artifact_path=str(artifact_path),
+            metrics_json=json.dumps(metrics, sort_keys=True),
+            is_current=True,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(run)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def _build_bundle(force_retrain: bool = False) -> dict[str, Any]:
     fingerprint = _data_fingerprint()
     if not force_retrain:
@@ -749,7 +839,42 @@ def _build_bundle(force_retrain: bool = False) -> dict[str, Any]:
         "stats": stats,
     }
     _save_bundle(bundle)
+    _write_training_run(bundle)
     return bundle
+
+
+def retrain_forecast_models(force_retrain: bool = True) -> dict[str, Any]:
+    return _build_bundle(force_retrain=force_retrain)
+
+
+_SCHEDULER_LOCK = threading.Lock()
+_SCHEDULER_STARTED = False
+
+
+def start_forecast_retraining_scheduler(app) -> None:
+    global _SCHEDULER_STARTED
+    if not app.config.get("ENABLE_FORECAST_SCHEDULER", True):
+        return
+    if app.config.get("TESTING"):
+        return
+    with _SCHEDULER_LOCK:
+        if _SCHEDULER_STARTED:
+            return
+        _SCHEDULER_STARTED = True
+
+    interval_seconds = int(app.config.get("FORECAST_RETRAIN_INTERVAL_SECONDS", FORECAST_SCHEDULER_INTERVAL_SECONDS))
+
+    def _run() -> None:
+        while True:
+            try:
+                with app.app_context():
+                    retrain_forecast_models(force_retrain=True)
+            except Exception:
+                app.logger.exception("Forecast retraining job failed")
+            time.sleep(max(60, interval_seconds))
+
+    thread = threading.Thread(target=_run, name="forecast-retraining-scheduler", daemon=True)
+    thread.start()
 
 
 def _forecast_rows_for_hospital(bundle: dict[str, Any], hospital: Hospital, horizon_days: int = HORIZON_DAYS) -> list[dict[str, Any]]:
@@ -832,7 +957,7 @@ def _forecast_rows_for_hospital(bundle: dict[str, Any], hospital: Hospital, hori
             "selected_model_rmse": bundle["stats"].get("selected_model_rmse"),
             "selected_model_mape": bundle["stats"].get("selected_model_mape"),
         },
-        "refresh_policy": "Refreshes automatically when request, stock, or donation data changes.",
+        "refresh_policy": "Retrains on a schedule and refreshes when request, stock, or donation data changes.",
         "is_operational": True,
     }
 
@@ -844,7 +969,7 @@ def get_hospital_forecast(hospital: Hospital | None, horizon_days: int = HORIZON
             "daily_totals": [],
             "blood_type_summary": [],
             "training_summary": {"trained_at": None, "sklearn_available": SKLEARN_AVAILABLE, "train_rows": 0, "validation_rows": 0, "training_rows": 0, "candidate_models": [], "selected_model": None, "selected_model_mae": None, "selected_model_rmse": None, "selected_model_mape": None},
-            "refresh_policy": "Refreshes automatically when request, stock, or donation data changes.",
+            "refresh_policy": "Retrains on a schedule and refreshes when request, stock, or donation data changes.",
             "is_operational": True,
         }
     bundle = _build_bundle()
@@ -884,7 +1009,7 @@ def get_national_forecast_summary(horizon_days: int = 7) -> dict[str, Any]:
             "selected_model_rmse": bundle["stats"].get("selected_model_rmse"),
             "selected_model_mape": bundle["stats"].get("selected_model_mape"),
         },
-        "refresh_policy": "Refreshes automatically when request, stock, or donation data changes.",
+        "refresh_policy": "Retrains on a schedule and refreshes when request, stock, or donation data changes.",
         "is_operational": True,
     }
 
