@@ -256,9 +256,25 @@
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
       <div>
         <div class="fw-semibold" style="font-size:1rem;">Operational Demand Forecast</div>
-        <div class="tiny text-muted">A single trained model predicts your 14-day hospital blood demand, with automated retraining whenever recent requests, stock, or donations change.</div>
+        <div class="tiny text-muted">A single trained model predicts your 14-day hospital blood demand, with automated retraining when records change. You can also refresh it manually.</div>
       </div>
-      <span class="badge bg-secondary">Scheduled retraining</span>
+      <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary">Run forecast now</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#forecast-upload-panel" aria-expanded="false">Upload training CSV</button>
+      </form>
+    </div>
+    <div class="collapse mt-3" id="forecast-upload-panel">
+      <div class="card p-3 bg-light border">
+        <div class="fw-semibold mb-2">Upload training data</div>
+        <div class="tiny text-muted mb-3">Upload a CSV file with new request rows. Duplicate rows are ignored and training data is appended row-wise.</div>
+        <form method="POST" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group mb-3">
+            <input type="file" name="training_csv" accept=".csv" class="form-control form-control-sm" required>
+          </div>
+          <button type="submit" class="btn btn-sm btn-success">Upload and retrain</button>
+        </form>
+      </div>
     </div>
 
     <div class="row g-3 mt-3">
@@ -353,16 +369,37 @@
     </div>
 
     <div class="mt-4">
-      <div class="fw-semibold mb-2">Why this forecast is higher or lower</div>
-      <ul class="ps-3" style="font-size:0.9rem; color:var(--text-muted);">
-        {% for driver in forecast_panel.forecast_explanation.drivers[:3] %}
-        <li>{{ driver.feature }} is {{ driver.impact }} than usual.</li>
-        {% endfor %}
-      </ul>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="fw-semibold mb-2">Why this forecast is higher or lower</div>
+          <ul class="ps-3" style="font-size:0.9rem; color:var(--text-muted);">
+            {% for driver in forecast_panel.forecast_explanation.drivers[:3] %}
+            <li>{{ driver.feature }} is {{ driver.impact }} than usual.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <div class="fw-semibold mb-2">Driver impact (SHAP-style)</div>
+          <ul class="ps-3" style="font-size:0.9rem; color:var(--text-muted);">
+            {% for item in forecast_panel.forecast_explanation.shap_summary[:4] %}
+            <li>{{ item.feature }}: {{ item.value|round(2) }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
 
-    <div class="mt-4" style="height:280px;">
-      <canvas id="forecast-chart"></canvas>
+    <div class="mt-4">
+      <div class="row g-3">
+        <div class="col-md-6" style="min-height:280px;">
+          <div class="fw-semibold mb-2">Demand forecast</div>
+          <canvas id="forecast-chart"></canvas>
+        </div>
+        <div class="col-md-6" style="min-height:280px;">
+          <div class="fw-semibold mb-2">SHAP driver impact</div>
+          <canvas id="shap-chart"></canvas>
+        </div>
+      </div>
     </div>
 
     <div class="tiny text-muted mt-3">{{ forecast_panel.refresh_policy }} This is planning support only, not a clinical decision engine.</div>
@@ -401,6 +438,33 @@
       });
 
       window.BloodLinkForecastRefreshUrl = refreshUrl;
+
+      const shapCanvas = document.getElementById('shap-chart');
+      if (shapCanvas && data && data.forecast_explanation && data.forecast_explanation.shap_summary) {
+        const shapLabels = data.forecast_explanation.shap_summary.map((item) => item.feature);
+        const shapValues = data.forecast_explanation.shap_summary.map((item) => item.value);
+        new Chart(shapCanvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: shapLabels,
+            datasets: [{
+              label: 'SHAP impact',
+              data: shapValues,
+              backgroundColor: 'rgba(15, 118, 110, 0.32)',
+              borderColor: '#0f766e',
+              borderWidth: 1,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+          },
+        });
+      }
     })();
   </script>
   {% endif %}

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import math
 import pickle
@@ -92,6 +94,7 @@ FORECAST_ARTIFACTS_DIR_NAME = "artifacts"
 FORECAST_CURRENT_FILENAME = "forecast_current.pkl"
 FORECAST_BUNDLE_FILENAME = "forecast_bundle.pkl"
 FORECAST_META_FILENAME = "forecast_meta.json"
+FORECAST_TRAINING_CSV_FILENAME = "training_data.csv"
 FORECAST_SCHEDULER_INTERVAL_SECONDS = 3600
 DEFAULT_COUNTY_COORDS = {
     "Baringo": (35.95, 0.47),
@@ -154,6 +157,12 @@ def _cache_dir() -> Path:
     return cache_dir
 
 
+def _training_csv_path() -> Path:
+    csv_path = _cache_dir() / FORECAST_TRAINING_CSV_FILENAME
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    return csv_path
+
+
 def _artifacts_dir() -> Path:
     artifacts_dir = _cache_dir() / FORECAST_ARTIFACTS_DIR_NAME
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -184,6 +193,155 @@ def invalidate_forecast_cache() -> None:
                 path.unlink()
         except Exception:
             pass
+
+
+def _training_csv_headers() -> list[str]:
+    return [
+        "request_id",
+        "created_at",
+        "hospital_id",
+        "county",
+        "blood_type",
+        "urgency_level",
+        "units_needed",
+        "target",
+        "recent_hospital_requests_30d",
+        "recent_hospital_requests_90d",
+        "recent_county_requests_30d",
+        "recent_blood_type_requests_30d",
+        "recent_blood_type_requests_90d",
+        "county_stock_total",
+        "county_stock_pressure",
+        "bank_count_in_county",
+        "source",
+    ]
+
+
+def _append_training_csv(rows: list[dict[str, Any]]) -> None:
+    path = _training_csv_path()
+    write_header = not path.exists() or path.stat().st_size == 0
+    with path.open("a", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=_training_csv_headers())
+        if write_header:
+            writer.writeheader()
+        for row in rows:
+            writer.writerow({k: row.get(k, "") for k in _training_csv_headers()})
+
+
+def _load_training_csv_rows() -> list[dict[str, Any]]:
+    path = _training_csv_path()
+    if not path.exists():
+        return []
+    with path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        return [dict(row) for row in reader]
+
+
+def _training_row_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    return (
+        str(row.get("request_id", "")).strip(),
+        str(row.get("hospital_id", "")).strip(),
+        str(row.get("created_at", "")).strip(),
+        str(row.get("blood_type", "")).strip(),
+        str(row.get("target", "")).strip(),
+    )
+
+
+def _training_row_from_csv_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized = _normalize_training_row(row)
+    created_at = normalized.get("created_at") or datetime.utcnow().isoformat()
+    try:
+        parsed_created_at = datetime.fromisoformat(created_at)
+    except Exception:
+        parsed_created_at = datetime.utcnow()
+
+    return {
+        "request_id": normalized["request_id"],
+        "created_at": parsed_created_at,
+        "features": {
+            "hospital_id": normalized["hospital_id"],
+            "county": normalized["county"],
+            "blood_type": normalized["blood_type"],
+            "urgency_level": normalized["urgency_level"],
+            "day_of_week_name": _day_name(parsed_created_at),
+            "month_name": _month_name(parsed_created_at),
+            "is_weekend": int(parsed_created_at.weekday() >= 5),
+            "holiday_flag": _holiday_flag(parsed_created_at),
+            "recent_hospital_requests_30d": int(normalized["recent_hospital_requests_30d"] or 0),
+            "recent_hospital_requests_90d": int(normalized["recent_hospital_requests_90d"] or 0),
+            "recent_county_requests_30d": int(normalized["recent_county_requests_30d"] or 0),
+            "recent_blood_type_requests_30d": int(normalized["recent_blood_type_requests_30d"] or 0),
+            "recent_blood_type_requests_90d": int(normalized["recent_blood_type_requests_90d"] or 0),
+            "county_stock_total": int(normalized["county_stock_total"] or 0),
+            "county_stock_pressure": float(normalized["county_stock_pressure"] or 0.0),
+            "bank_count_in_county": int(normalized["bank_count_in_county"] or 0),
+            "source": normalized["source"] or "uploaded",
+        },
+        "target": max(0.0, float(normalized["target"] or 0.0)),
+    }
+
+
+def _training_row_to_csv_row(row: dict[str, Any]) -> dict[str, Any]:
+    features = row.get("features", {})
+    return {
+        "request_id": str(row.get("request_id", "")),
+        "created_at": row.get("created_at", datetime.utcnow()).isoformat(),
+        "hospital_id": str(features.get("hospital_id", "")),
+        "county": str(features.get("county", "")),
+        "blood_type": str(features.get("blood_type", "")),
+        "urgency_level": str(features.get("urgency_level", "")),
+        "units_needed": str(features.get("units_needed", "")),
+        "target": str(row.get("target", "")),
+        "recent_hospital_requests_30d": str(features.get("recent_hospital_requests_30d", "")),
+        "recent_hospital_requests_90d": str(features.get("recent_hospital_requests_90d", "")),
+        "recent_county_requests_30d": str(features.get("recent_county_requests_30d", "")),
+        "recent_blood_type_requests_30d": str(features.get("recent_blood_type_requests_30d", "")),
+        "recent_blood_type_requests_90d": str(features.get("recent_blood_type_requests_90d", "")),
+        "county_stock_total": str(features.get("county_stock_total", "")),
+        "county_stock_pressure": str(features.get("county_stock_pressure", "")),
+        "bank_count_in_county": str(features.get("bank_count_in_county", "")),
+        "source": str(features.get("source", "actual")),
+    }
+
+
+def _write_training_csv_from_rows(rows: list[dict[str, Any]]) -> None:
+    path = _training_csv_path()
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=_training_csv_headers())
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(_training_row_to_csv_row(row))
+
+
+def upload_training_csv_stream(file_stream: io.TextIOBase) -> tuple[int, int]:
+    reader = csv.DictReader(file_stream)
+    existing_rows = _load_training_csv_rows()
+    existing_keys = {tuple(_normalize_training_row(row)[key] for key in ["request_id", "hospital_id", "created_at", "blood_type", "target"]) for row in existing_rows}
+    rows_to_append: list[dict[str, Any]] = []
+
+    for raw in reader:
+        normalized = _normalize_training_row(raw)
+        key = (
+            normalized["request_id"],
+            normalized["hospital_id"],
+            normalized["created_at"],
+            normalized["blood_type"],
+            normalized["target"],
+        )
+        if key in existing_keys:
+            continue
+        existing_keys.add(key)
+        normalized["source"] = normalized.get("source") or "uploaded"
+        rows_to_append.append(normalized)
+
+    if rows_to_append:
+        with _training_csv_path().open("a", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=_training_csv_headers())
+            if _training_csv_path().stat().st_size == 0:
+                writer.writeheader()
+            for row in rows_to_append:
+                writer.writerow(row)
+    return len(rows_to_append), len(existing_rows)
 
 
 def _first_present(payload: dict[str, Any], keys: Iterable[str]) -> Any:
@@ -343,6 +501,7 @@ def _training_feature_row(
         "county_stock_total": county_stock_total,
         "county_stock_pressure": county_pressure,
         "bank_count_in_county": bank_counts.get(county, 0),
+        "units_needed": max(1, int(request.units_needed or 1)),
         "source": "actual",
     }
 
@@ -352,9 +511,19 @@ def _build_training_rows() -> list[dict[str, Any]]:
     stock_totals, bank_counts = _stock_by_county()
     request_history: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, str, str, str, str, str]] = set()
 
     for request in requests:
         feature_row = _training_feature_row(request, request_history, stock_totals, bank_counts)
+        normalized = {
+            "request_id": str(request.id),
+            "hospital_id": f"hospital-{request.hospital_id}",
+            "created_at": (request.created_at or datetime.utcnow()).isoformat(),
+            "blood_type": feature_row["blood_type"],
+            "urgency_level": feature_row["urgency_level"],
+            "target": str(max(1.0, float(request.units_needed or 1))),
+        }
+        seen_keys.add(_training_row_key(normalized))
         rows.append(
             {
                 "request_id": request.id,
@@ -370,6 +539,34 @@ def _build_training_rows() -> list[dict[str, Any]]:
                 "hospital_id": request.hospital_id,
                 "county": feature_row["county"],
                 "blood_type": feature_row["blood_type"],
+            }
+        )
+
+    csv_rows = _load_training_csv_rows()
+    for raw in csv_rows:
+        normalized_csv = _normalize_training_row(raw)
+        if not normalized_csv["created_at"] or not normalized_csv["hospital_id"]:
+            continue
+        key = _training_row_key(normalized_csv)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        csv_row = _training_row_from_csv_row(normalized_csv)
+        rows.append(
+            {
+                "request_id": normalized_csv["request_id"],
+                "created_at": csv_row["created_at"],
+                "features": csv_row["features"],
+                "target": csv_row["target"],
+            }
+        )
+        request_history.append(
+            {
+                "request_id": normalized_csv["request_id"],
+                "created_at": csv_row["created_at"],
+                "hospital_id": normalized_csv["hospital_id"],
+                "county": normalized_csv["county"],
+                "blood_type": normalized_csv["blood_type"],
             }
         )
 
@@ -839,6 +1036,34 @@ def _build_bundle(force_retrain: bool = False) -> dict[str, Any]:
     stats["selected_model_rmse"] = model_selection.get("rmse")
     stats["selected_model_mape"] = model_selection.get("mape")
 
+    sample_hospital = Hospital.query.order_by(Hospital.id.asc()).first()
+    if sample_hospital is not None:
+        sample_bundle = {"stats": stats, "model_selection": {"pipeline": model_selection.get("pipeline")}}
+        sample_row = _representative_forecast_feature_row(sample_bundle, sample_hospital)
+    else:
+        sample_row = {
+            "hospital_id": "hospital-0",
+            "county": "Nairobi",
+            "blood_type": "O+",
+            "urgency_level": "normal",
+            "day_of_week_name": _day_name(datetime.utcnow()),
+            "month_name": _month_name(datetime.utcnow()),
+            "is_weekend": int(datetime.utcnow().weekday() >= 5),
+            "holiday_flag": _holiday_flag(datetime.utcnow()),
+            "recent_hospital_requests_30d": 0,
+            "recent_hospital_requests_90d": 0,
+            "recent_county_requests_30d": 0,
+            "recent_blood_type_requests_30d": 0,
+            "recent_blood_type_requests_90d": 0,
+            "county_stock_total": 0,
+            "county_stock_pressure": 1.0,
+            "bank_count_in_county": 0,
+            "source": "forecast",
+        }
+
+    stats["shap_summary"] = _get_shap_summary(model_selection.get("pipeline"), sample_row, top_n=5)
+    _write_training_csv_from_rows(training_rows)
+
     bundle = {
         "fingerprint": fingerprint,
         "trained_at": datetime.utcnow().isoformat(),
@@ -954,6 +1179,58 @@ def _get_shap_drivers(pipeline: Any | None, feature_row: dict[str, Any], top_n: 
         return []
 
 
+def _get_shap_summary(pipeline: Any | None, feature_row: dict[str, Any], top_n: int = 5) -> list[dict[str, Any]]:
+    if pipeline is None:
+        return []
+
+    try:
+        vectorizer = pipeline.named_steps["vectorizer"]
+        model = pipeline.named_steps["model"]
+        X = vectorizer.transform([feature_row])
+
+        if SHAP_AVAILABLE and shap is not None:
+            explainer = shap.Explainer(model, X)
+            shap_values = explainer(X)
+            values = shap_values.values[0]
+            feature_names = getattr(shap_values, "feature_names", None) or vectorizer.get_feature_names_out()
+            entries = sorted(zip(feature_names, values), key=lambda item: abs(item[1]), reverse=True)[:top_n]
+            return [
+                {
+                    "feature": _humanize_feature_name(name),
+                    "value": float(value),
+                }
+                for name, value in entries
+            ]
+    except Exception:
+        pass
+
+    try:
+        vectorizer = pipeline.named_steps["vectorizer"]
+        model = pipeline.named_steps["model"]
+        feature_names = vectorizer.get_feature_names_out()
+
+        if hasattr(model, "feature_importances_"):
+            import numpy as np
+            scores = np.array(model.feature_importances_, dtype=float)
+        elif hasattr(model, "coef_"):
+            import numpy as np
+            coef = np.array(getattr(model, "coef_"), dtype=float)
+            scores = coef.ravel()
+        else:
+            return []
+
+        entries = sorted(zip(feature_names, scores), key=lambda item: abs(item[1]), reverse=True)[:top_n]
+        return [
+            {
+                "feature": _humanize_feature_name(name),
+                "value": float(value),
+            }
+            for name, value in entries
+        ]
+    except Exception:
+        return []
+
+
 def _baseline_forecast_summary(
     hospital: Hospital,
     total_units: float,
@@ -1041,7 +1318,11 @@ def _build_forecast_explanation(
 ) -> dict[str, Any]:
     pipeline = bundle.get("model_selection", {}).get("pipeline")
     sample_row = _representative_forecast_feature_row(bundle, hospital)
-    drivers = _get_shap_drivers(pipeline, sample_row, top_n=3)
+    drivers = bundle.get("stats", {}).get("shap_summary") or []
+
+    if not drivers:
+        drivers = _get_shap_drivers(pipeline, sample_row, top_n=3)
+
     if not drivers:
         drivers = [
             {"feature": "Recent requests", "impact": "higher", "strength": 1.0},
@@ -1059,9 +1340,11 @@ def _build_forecast_explanation(
         stats,
     )
 
+    shap_summary = bundle.get("stats", {}).get("shap_summary", [])
     return {
         "summary": summary,
         "drivers": drivers,
+        "shap_summary": shap_summary,
         "model_name": bundle.get("stats", {}).get("selected_model", "best model"),
     }
 
@@ -1212,7 +1495,7 @@ def get_hospital_forecast(hospital: Hospital | None, horizon_days: int = HORIZON
             "daily_totals": [],
             "blood_type_summary": [],
             "training_summary": {"trained_at": None, "sklearn_available": SKLEARN_AVAILABLE, "train_rows": 0, "validation_rows": 0, "training_rows": 0, "candidate_models": [], "selected_model": None, "selected_model_mae": None, "selected_model_rmse": None, "selected_model_mape": None},
-            "refresh_policy": "Retrains on a schedule and refreshes when request, stock, or donation data changes.",
+            "refresh_policy": "Forecast updates automatically when new data arrives, and can also be rerun manually or refreshed after a CSV upload.",
             "is_operational": True,
         }
     bundle = _build_bundle()

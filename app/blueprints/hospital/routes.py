@@ -7,7 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 from app.models import BloodBank, BloodBankStock, BloodRequest, Donor, DonationRecord, Hospital
 from app.utils.auth import role_required
-from app.utils.forecast import get_hospital_forecast, invalidate_forecast_cache
+from io import StringIO
+
+from app.utils.forecast import (
+    get_hospital_forecast,
+    invalidate_forecast_cache,
+    retrain_forecast_models,
+    upload_training_csv_stream,
+)
 from app.utils.matching import rank_donors_for_request
 
 hospital_bp = Blueprint("hospital", __name__, url_prefix="/hospital")
@@ -103,6 +110,52 @@ def dashboard():
         latest_request=latest_open_request,
         forecast_panel=forecast_panel,
     )
+
+
+@hospital_bp.route("/forecast/run", methods=["POST"])
+@role_required("hospital_staff")
+def run_forecast():
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+
+    try:
+        retrain_forecast_models(force_retrain=True)
+        flash("Forecast rerun completed successfully.", "success")
+    except Exception as exc:
+        flash("Unable to rerun the forecast now. Please try again later.", "danger")
+    return redirect(url_for("hospital.dashboard"))
+
+
+@hospital_bp.route("/forecast/upload", methods=["POST"])
+@role_required("hospital_staff")
+def upload_training_data():
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+
+    file_storage = request.files.get("training_csv")
+    if not file_storage or not file_storage.filename:
+        flash("Please choose a training CSV file to upload.", "warning")
+        return redirect(url_for("hospital.dashboard"))
+
+    if not file_storage.filename.lower().endswith(".csv"):
+        flash("Only CSV files are accepted for training data uploads.", "warning")
+        return redirect(url_for("hospital.dashboard"))
+
+    try:
+        payload = file_storage.stream.read().decode("utf-8-sig")
+        imported_count, existing_count = upload_training_csv_stream(StringIO(payload))
+        if imported_count > 0:
+            invalidate_forecast_cache()
+            retrain_forecast_models(force_retrain=True)
+            flash(f"Uploaded {imported_count} new training rows and refreshed the model.", "success")
+        else:
+            flash("The uploaded CSV contained no new training rows; duplicates were ignored.", "info")
+    except Exception as exc:
+        flash("Failed to process the uploaded CSV file. Ensure it is valid and UTF-8 encoded.", "danger")
+
+    return redirect(url_for("hospital.dashboard"))
 
 
 @hospital_bp.route("/profile-setup", methods=["GET", "POST"])
