@@ -106,6 +106,8 @@ def create_app(config_name=None):
     app.register_blueprint(ussd_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(reimbursement_bp)
+    from app.blueprints.help.routes import help_bp
+    app.register_blueprint(help_bp)
 
     init_database(app)
     start_forecast_retraining_scheduler(app)

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Hospital Help - BloodLink{% endblock %}
+{% block content %}
+<div class="help-page container">
+  <h1>Hospital staff — How to use BloodLink</h1>
+  <p class="lead">This page explains what you see and how to use it. Read slowly — everything you need is here.</p>
+
+  <h2>Overview</h2>
+  <p>
+    BloodLink helps your hospital request blood, view local stock, and plan for future demand.
+    The dashboard shows your active requests, nearby blood banks, and a suggested forecast of future needs.
+  </p>
+
+  <h2>Dashboard sections</h2>
+  <h3>My requests</h3>
+  <p>
+    This lists the blood requests you have created. Each request shows the blood type, how many units you asked for,
+    the urgency, and whether it has been fulfilled. To create a new request, use the form at the top of the dashboard.
+  </p>
+
+  <h3>Local stock</h3>
+  <p>
+    This shows the available units of each blood type in nearby blood banks. Use this to see if a nearby bank can fulfill your request.
+    If a bank can cover the request, contact them directly using the contact details shown in the stock entry.
+  </p>
+
+  <h3>Matching donors</h3>
+  <p>
+    For open requests, we show a list of potential donors who match the required blood type and are likely available.
+    This is just a convenience; contact donors using the provided details and follow normal clinical procedures.
+  </p>
+
+  <h3>Forecast panel</h3>
+  <p>
+    The forecast panel shows an estimate of how many units your hospital might need over the coming days.
+    - "Total predicted units" is the sum expected across the forecast window.
+    - "Average daily" is how many units per day we expect on average.
+    - "Peak units" shows the highest single-day demand in the window.
+    - The forecast also highlights the blood types likely to be most needed.
+  </p>
+
+  <h3>Driver explanations</h3>
+  <p>
+    We show a short explanation describing why the forecast looks the way it does. This uses simple terms:
+    - "Drivers" are things that most affect demand (for example, recent requests or low stock in the county).
+    - If a driver says "higher", it means that factor pushes demand up; "lower" means it pulls demand down.
+  </p>
+
+  <h2>Uploading training data</h2>
+  <p>
+    If you have historical request data in a CSV file, use the "Upload training CSV" button in the forecast panel.
+    This improves the forecasting model. The app will ignore duplicate rows and will mirror the CSV to your project repository if configured.
+  </p>
+
+  <h2>Manual forecast run</h2>
+  <p>
+    If you want the latest forecast right now, click "Run forecast now". This retrains the model and updates the dashboard.
+  </p>
+
+  <h2>Practical tips</h2>
+  <ul>
+    <li>Always double-check the units before accepting a transfer.</li>
+    <li>When creating a request, be precise about urgency—this helps the system prioritize.</li>
+    <li>Use the forecast to plan for the next two weeks, but always confirm availability with blood banks.</li>
+  </ul>
+
+  <h2>Questions or support</h2>
+  <p>
+    For help, contact your regional BloodLink administrator or use the contact form in the app. If something seems wrong with the data,
+    note the date and the affected entries when you ask for help.
+  </p>
+</div>
+{% endblock %}

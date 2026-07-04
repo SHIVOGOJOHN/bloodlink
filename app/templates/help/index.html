@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Help - BloodLink{% endblock %}
+{% block content %}
+<div class="help-page container">
+  <h1>Welcome to BloodLink help</h1>
+  <p>If you have an account, you'll see role-specific guidance. Otherwise, choose your role below.</p>
+  <ul>
+    <li><a href="{{ url_for('help.donor') }}">Donor help</a></li>
+    <li><a href="{{ url_for('help.hospital') }}">Hospital staff help</a></li>
+    <li><a href="{{ url_for('help.bloodbank') }}">Blood bank staff help</a></li>
+    <li><a href="{{ url_for('help.admin') }}">Admin help</a></li>
+  </ul>
+</div>
+{% endblock %}
