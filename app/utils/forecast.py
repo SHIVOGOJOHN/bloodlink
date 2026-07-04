@@ -92,6 +92,7 @@ FORECAST_ARTIFACTS_DIR_NAME = "artifacts"
 FORECAST_CURRENT_FILENAME = "forecast_current.pkl"
 FORECAST_BUNDLE_FILENAME = "forecast_bundle.pkl"
 FORECAST_META_FILENAME = "forecast_meta.json"
+FORECAST_SCHEDULER_INTERVAL_SECONDS = 3600
 DEFAULT_COUNTY_COORDS = {
     "Baringo": (35.95, 0.47),
     "Bomet": (35.35, -0.78),
