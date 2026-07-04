@@ -8,6 +8,12 @@ import random
 import threading
 import time
 from collections import Counter, defaultdict
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except Exception:
+    shap = None
+    SHAP_AVAILABLE = False
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
@@ -18,6 +24,7 @@ from sqlalchemy import func
 from app.extensions import db
 from app.models import BloodBank, BloodBankStock, BloodRequest, DonationRecord, ForecastTrainingRun, Hospital
 from app.utils.matching import COUNTY_DISTANCE
+from app.utils.ai_clients import get_ai_cascade
 
 try:  # scikit-learn is required by the plan, but the app should still degrade gracefully.
     from sklearn.dummy import DummyRegressor
@@ -843,6 +850,221 @@ def _build_bundle(force_retrain: bool = False) -> dict[str, Any]:
     return bundle
 
 
+def _humanize_feature_name(key: str) -> str:
+    if "=" in key:
+        prefix, value = key.split("=", 1)
+        return f"{prefix.replace('_', ' ').capitalize()} = {value}"
+    return key.replace('_', ' ').capitalize()
+
+
+def _representative_forecast_feature_row(bundle: dict[str, Any], hospital: Hospital) -> dict[str, Any]:
+    stats = bundle.get("stats", {})
+    today = datetime.utcnow()
+    county = (hospital.county or "Unknown").strip() or "Unknown"
+    base = {
+        "hospital_id": f"hospital-{hospital.id}",
+        "county": county,
+        "day_of_week_name": _day_name(today),
+        "month_name": _month_name(today),
+        "is_weekend": int(today.weekday() >= 5),
+        "holiday_flag": _holiday_flag(today),
+        "recent_hospital_requests_30d": stats.get("hospital_30", {}).get(hospital.id, 0),
+        "recent_hospital_requests_90d": stats.get("hospital_90", {}).get(hospital.id, 0),
+        "recent_county_requests_30d": stats.get("county_30", {}).get(county, 0),
+        "recent_blood_type_requests_30d": 0,
+        "recent_blood_type_requests_90d": 0,
+        "county_stock_total": stats.get("county_stock_total", {}).get(county, 0),
+        "county_stock_pressure": stats.get("county_pressure", {}).get(county, 1.0),
+        "bank_count_in_county": stats.get("bank_count", {}).get(county, 0),
+        "source": "forecast",
+    }
+
+    pipeline = bundle.get("model_selection", {}).get("pipeline")
+    if pipeline is None:
+        return {**base, "blood_type": "O+", "urgency_level": "normal"}
+
+    candidates: list[tuple[float, dict[str, Any]]] = []
+    for blood_type in BLOOD_TYPES:
+        feature_row = {
+            **base,
+            "blood_type": blood_type,
+            "urgency_level": "urgent" if blood_type in {"O-", "O+"} and today.weekday() >= 4 else "normal",
+        }
+        try:
+            score = float(pipeline.predict([feature_row])[0])
+        except Exception:
+            score = 0.0
+        candidates.append((score, feature_row))
+
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def _get_shap_drivers(pipeline: Any | None, feature_row: dict[str, Any], top_n: int = 3) -> list[dict[str, Any]]:
+    if pipeline is None:
+        return []
+
+    try:
+        vectorizer = pipeline.named_steps["vectorizer"]
+        model = pipeline.named_steps["model"]
+        X = vectorizer.transform([feature_row])
+
+        if SHAP_AVAILABLE and shap is not None:
+            explainer = shap.Explainer(model, X)
+            shap_values = explainer(X)
+            values = shap_values.values[0]
+            feature_names = getattr(shap_values, "feature_names", None) or vectorizer.get_feature_names_out()
+            entries = sorted(zip(feature_names, values), key=lambda item: abs(item[1]), reverse=True)[:top_n]
+            return [
+                {
+                    "feature": _humanize_feature_name(name),
+                    "impact": "higher" if float(value) > 0 else "lower",
+                    "strength": round(abs(float(value)), 2),
+                }
+                for name, value in entries
+            ]
+    except Exception:
+        pass
+
+    try:
+        vectorizer = pipeline.named_steps["vectorizer"]
+        model = pipeline.named_steps["model"]
+        feature_names = vectorizer.get_feature_names_out()
+
+        if hasattr(model, "feature_importances_"):
+            import numpy as np
+            scores = np.array(model.feature_importances_, dtype=float)
+        elif hasattr(model, "coef_"):
+            import numpy as np
+            coef = np.array(getattr(model, "coef_"), dtype=float)
+            scores = np.abs(coef.ravel())
+        else:
+            return []
+
+        entries = sorted(zip(feature_names, scores), key=lambda item: abs(item[1]), reverse=True)[:top_n]
+        return [
+            {
+                "feature": _humanize_feature_name(name),
+                "impact": "higher" if float(value) >= 0 else "lower",
+                "strength": round(float(value), 2),
+            }
+            for name, value in entries
+        ]
+    except Exception:
+        return []
+
+
+def _baseline_forecast_summary(
+    hospital: Hospital,
+    total_units: float,
+    average_daily: float,
+    top_blood_type: str,
+    pressure: float,
+    recent_30: int,
+    drivers: list[dict[str, Any]],
+) -> str:
+    if total_units > average_daily * 1.05:
+        trend = "higher than recent demand"
+    elif total_units < average_daily * 0.95:
+        trend = "slightly lower than recent demand"
+    else:
+        trend = "in line with recent demand"
+
+    driver_label = drivers[0]["feature"] if drivers else "local demand patterns"
+    return (
+        f"Forecast demand is {trend}. The strongest driver is {driver_label}, and demand is particularly elevated for {top_blood_type}. "
+        f"Local stock pressure and recent hospital requests are the main factors to watch."
+    )
+
+
+def _generate_forecast_summary(
+    hospital: Hospital,
+    total_units: float,
+    average_daily: float,
+    top_blood_type: str,
+    drivers: list[dict[str, Any]],
+    horizon_days: int,
+    stats: dict[str, Any],
+) -> str:
+    try:
+        cascade = get_ai_cascade()
+    except Exception:
+        return _baseline_forecast_summary(
+            hospital,
+            total_units,
+            average_daily,
+            top_blood_type,
+            stats.get("county_pressure", {}).get(hospital.county or "Unknown", 1.0),
+            stats.get("hospital_30", {}).get(hospital.id, 0),
+            drivers,
+        )
+
+    pressure = round(stats.get("county_pressure", {}).get(hospital.county or "Unknown", 1.0), 2)
+    prompt = (
+        "You are a clinical operations assistant writing for Kenyan hospital staff. "
+        "In two concise sentences, explain why the upcoming blood demand forecast is what it is, "
+        "using non-technical language focused on operational implications. Do not mention machine learning details.\n\n"
+        f"Hospital: {hospital.name}\n"
+        f"County: {hospital.county}\n"
+        f"Forecast horizon: {horizon_days} days\n"
+        f"Top predicted blood type: {top_blood_type}\n"
+        f"Predicted total demand: {round(total_units,2)} units\n"
+        f"Recent requests in last 30 days: {int(stats.get('hospital_30', {}).get(hospital.id, 0))}\n"
+        f"County stock pressure: {pressure}\n"
+        "Key drivers: "
+        + ", ".join([f"{driver['feature']} ({driver['impact']})" for driver in drivers[:3]])
+        + "\n\nWrite a short, reassuring explanation for hospital staff."
+    )
+
+    result = cascade.generate(prompt, max_tokens=140, temperature=0.35)
+    if result:
+        return result.replace("**", "").replace("*", "").replace("#", "").strip()
+    return _baseline_forecast_summary(
+        hospital,
+        total_units,
+        average_daily,
+        top_blood_type,
+        pressure,
+        stats.get("hospital_30", {}).get(hospital.id, 0),
+        drivers,
+    )
+
+
+def _build_forecast_explanation(
+    bundle: dict[str, Any],
+    hospital: Hospital,
+    horizon_days: int,
+    total_units: float,
+    average_daily: float,
+    top_blood_type: str,
+    stats: dict[str, Any],
+) -> dict[str, Any]:
+    pipeline = bundle.get("model_selection", {}).get("pipeline")
+    sample_row = _representative_forecast_feature_row(bundle, hospital)
+    drivers = _get_shap_drivers(pipeline, sample_row, top_n=3)
+    if not drivers:
+        drivers = [
+            {"feature": "Recent requests", "impact": "higher", "strength": 1.0},
+            {"feature": "County stock pressure", "impact": "higher", "strength": 1.0},
+            {"feature": "Urgent blood type need", "impact": "higher", "strength": 1.0},
+        ]
+
+    summary = _generate_forecast_summary(
+        hospital,
+        total_units,
+        average_daily,
+        top_blood_type,
+        drivers,
+        horizon_days,
+        stats,
+    )
+
+    return {
+        "summary": summary,
+        "drivers": drivers,
+        "model_name": bundle.get("stats", {}).get("selected_model", "best model"),
+    }
+
+
 def retrain_forecast_models(force_retrain: bool = True) -> dict[str, Any]:
     return _build_bundle(force_retrain=force_retrain)
 
@@ -936,6 +1158,19 @@ def _forecast_rows_for_hospital(bundle: dict[str, Any], hospital: Hospital, hori
         )
     blood_type_summary.sort(key=lambda item: item["average_units"], reverse=True)
 
+    total_predicted = round(sum(item["predicted_units"] for item in daily_totals), 2)
+    average_daily_units = round(total_predicted / max(horizon_days, 1), 2)
+    top_blood_type = blood_type_summary[0]["blood_type"] if blood_type_summary else "Unknown"
+    forecast_explanation = _build_forecast_explanation(
+        bundle,
+        hospital,
+        horizon_days,
+        total_predicted,
+        average_daily_units,
+        top_blood_type,
+        stats,
+    )
+
     return {
         "hospital": {
             "id": hospital.id,
@@ -945,6 +1180,13 @@ def _forecast_rows_for_hospital(bundle: dict[str, Any], hospital: Hospital, hori
         "horizon_days": horizon_days,
         "daily_totals": daily_totals,
         "blood_type_summary": blood_type_summary,
+        "forecast_summary": {
+            "total_units": total_predicted,
+            "average_daily_units": average_daily_units,
+            "peak_units": round(max((item["predicted_units"] for item in daily_totals), default=0.0), 2),
+            "top_blood_type": top_blood_type,
+        },
+        "forecast_explanation": forecast_explanation,
         "training_summary": {
             "trained_at": bundle["trained_at"],
             "sklearn_available": bundle["sklearn_available"],
