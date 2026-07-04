@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from sqlalchemy import UniqueConstraint
 
 from flask_login import UserMixin
 
@@ -150,6 +151,40 @@ class DonationRecord(db.Model):
     donor = db.relationship("Donor", backref=db.backref("donations", lazy=True))
     hospital = db.relationship("Hospital", backref=db.backref("donations", lazy=True))
     blood_request = db.relationship("BloodRequest", backref=db.backref("records", lazy=True))
+
+
+class ForecastTrainingRecord(db.Model):
+    __tablename__ = table_name("forecast_training_data")
+    __table_args__ = (
+        UniqueConstraint(
+            "request_id",
+            "hospital_id",
+            "created_at",
+            "blood_type",
+            "target",
+            name="uq_forecast_training_data_key",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    hospital_id = db.Column(db.String(100), nullable=True)
+    county = db.Column(db.String(100), nullable=True)
+    blood_type = db.Column(db.String(10), nullable=True)
+    urgency_level = db.Column(db.String(50), nullable=True)
+    units_needed = db.Column(db.Integer, nullable=True)
+    target = db.Column(db.Float, nullable=False)
+    recent_hospital_requests_30d = db.Column(db.Integer, default=0)
+    recent_hospital_requests_90d = db.Column(db.Integer, default=0)
+    recent_county_requests_30d = db.Column(db.Integer, default=0)
+    recent_blood_type_requests_30d = db.Column(db.Integer, default=0)
+    recent_blood_type_requests_90d = db.Column(db.Integer, default=0)
+    county_stock_total = db.Column(db.Integer, default=0)
+    county_stock_pressure = db.Column(db.Float, default=0.0)
+    bank_count_in_county = db.Column(db.Integer, default=0)
+    source = db.Column(db.String(50), nullable=False, default="uploaded")
+    inserted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Notification(db.Model):

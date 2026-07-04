@@ -160,6 +160,35 @@ def create_app(config_name=None):
         except Exception:
             abort(404)
 
+    @app.route("/cdn/training_csv/<path:filename>")
+    def cdn_training_csv(filename):
+        """Proxy training CSV uploads from GitHub."""
+        token = app.config.get("GITHUB_TOKEN", "").strip()
+        repo = app.config.get("GITHUB_REPO", "").strip()
+        branch = app.config.get("GITHUB_BRANCH", "main").strip()
+
+        if not token or not repo:
+            from flask import abort
+            abort(404)
+
+        import requests
+        from flask import make_response, abort
+
+        url = f"https://raw.githubusercontent.com/{repo}/{branch}/training_csv/{filename}"
+        headers = {"Authorization": f"token {token}"}
+
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                resp = make_response(r.content)
+                resp.headers['Content-Type'] = r.headers.get('Content-Type', 'text/csv')
+                resp.headers['Cache-Control'] = 'public, max-age=86400'
+                return resp
+            else:
+                abort(404)
+        except Exception:
+            abort(404)
+
     from flask import abort
     from flask_login import login_required
 

@@ -15,6 +15,7 @@ from app.utils.forecast import (
     retrain_forecast_models,
     upload_training_csv_stream,
 )
+from app.utils.github_cdn import upload_training_csv
 from app.utils.matching import rank_donors_for_request
 
 hospital_bp = Blueprint("hospital", __name__, url_prefix="/hospital")
@@ -144,15 +145,22 @@ def upload_training_data():
         return redirect(url_for("hospital.dashboard"))
 
     try:
-        payload = file_storage.stream.read().decode("utf-8-sig")
+        file_bytes = file_storage.read()
+        payload = file_bytes.decode("utf-8-sig")
+        uploaded_url = upload_training_csv(file_bytes, file_storage.filename)
         imported_count, existing_count = upload_training_csv_stream(StringIO(payload))
         if imported_count > 0:
             invalidate_forecast_cache()
             retrain_forecast_models(force_retrain=True)
-            flash(f"Uploaded {imported_count} new training rows and refreshed the model.", "success")
+            flash_msg = f"Uploaded {imported_count} new training rows and refreshed the model."
+            if uploaded_url:
+                flash_msg += " Training CSV was also mirrored to GitHub."
+            else:
+                flash_msg += " GitHub mirror was not available."
+            flash(flash_msg, "success")
         else:
             flash("The uploaded CSV contained no new training rows; duplicates were ignored.", "info")
-    except Exception as exc:
+    except Exception:
         flash("Failed to process the uploaded CSV file. Ensure it is valid and UTF-8 encoded.", "danger")
 
     return redirect(url_for("hospital.dashboard"))

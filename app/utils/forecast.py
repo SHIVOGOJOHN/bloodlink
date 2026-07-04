@@ -24,7 +24,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from app.extensions import db
-from app.models import BloodBank, BloodBankStock, BloodRequest, DonationRecord, ForecastTrainingRun, Hospital
+from app.models import BloodBank, BloodBankStock, BloodRequest, DonationRecord, ForecastTrainingRecord, ForecastTrainingRun, Hospital
 from app.utils.matching import COUNTY_DISTANCE
 from app.utils.ai_clients import get_ai_cascade
 
@@ -195,6 +195,19 @@ def invalidate_forecast_cache() -> None:
             pass
 
 
+def _normalize_training_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized = {key: (row.get(key) if row.get(key) is not None else "") for key in _training_csv_headers()}
+    if normalized["created_at"]:
+        normalized["created_at"] = str(normalized["created_at"]).strip()
+    else:
+        normalized["created_at"] = datetime.utcnow().isoformat()
+    normalized["hospital_id"] = str(normalized["hospital_id"]).strip()
+    normalized["blood_type"] = str(normalized["blood_type"]).strip()
+    normalized["target"] = str(normalized["target"]).strip() or "0"
+    normalized["source"] = str(normalized.get("source", "uploaded")).strip() or "uploaded"
+    return normalized
+
+
 def _training_csv_headers() -> list[str]:
     return [
         "request_id",
@@ -235,6 +248,35 @@ def _load_training_csv_rows() -> list[dict[str, Any]]:
     with path.open("r", newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         return [dict(row) for row in reader]
+
+
+def _load_training_records() -> list[dict[str, Any]]:
+    try:
+        records = ForecastTrainingRecord.query.order_by(ForecastTrainingRecord.created_at.asc()).all()
+        return [
+            {
+                "request_id": record.request_id or "",
+                "created_at": record.created_at.isoformat() if record.created_at else "",
+                "hospital_id": record.hospital_id or "",
+                "county": record.county or "",
+                "blood_type": record.blood_type or "",
+                "urgency_level": record.urgency_level or "",
+                "units_needed": str(record.units_needed or ""),
+                "target": str(record.target),
+                "recent_hospital_requests_30d": str(record.recent_hospital_requests_30d),
+                "recent_hospital_requests_90d": str(record.recent_hospital_requests_90d),
+                "recent_county_requests_30d": str(record.recent_county_requests_30d),
+                "recent_blood_type_requests_30d": str(record.recent_blood_type_requests_30d),
+                "recent_blood_type_requests_90d": str(record.recent_blood_type_requests_90d),
+                "county_stock_total": str(record.county_stock_total),
+                "county_stock_pressure": str(record.county_stock_pressure),
+                "bank_count_in_county": str(record.bank_count_in_county),
+                "source": record.source or "uploaded",
+            }
+            for record in records
+        ]
+    except Exception:
+        return []
 
 
 def _training_row_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
@@ -315,8 +357,12 @@ def _write_training_csv_from_rows(rows: list[dict[str, Any]]) -> None:
 
 def upload_training_csv_stream(file_stream: io.TextIOBase) -> tuple[int, int]:
     reader = csv.DictReader(file_stream)
-    existing_rows = _load_training_csv_rows()
-    existing_keys = {tuple(_normalize_training_row(row)[key] for key in ["request_id", "hospital_id", "created_at", "blood_type", "target"]) for row in existing_rows}
+    existing_csv_rows = _load_training_csv_rows()
+    existing_db_rows = _load_training_records()
+    existing_keys = {
+        tuple(_normalize_training_row(row)[key] for key in ["request_id", "hospital_id", "created_at", "blood_type", "target"])
+        for row in existing_csv_rows + existing_db_rows
+    }
     rows_to_append: list[dict[str, Any]] = []
 
     for raw in reader:
@@ -341,8 +387,8 @@ def upload_training_csv_stream(file_stream: io.TextIOBase) -> tuple[int, int]:
                 writer.writeheader()
             for row in rows_to_append:
                 writer.writerow(row)
-    return len(rows_to_append), len(existing_rows)
-
+        _upsert_training_records(rows_to_append)
+    return len(rows_to_append), len(existing_csv_rows)
 
 def _first_present(payload: dict[str, Any], keys: Iterable[str]) -> Any:
     for key in keys:
@@ -543,7 +589,8 @@ def _build_training_rows() -> list[dict[str, Any]]:
         )
 
     csv_rows = _load_training_csv_rows()
-    for raw in csv_rows:
+    db_rows = _load_training_records()
+    for raw in db_rows + csv_rows:
         normalized_csv = _normalize_training_row(raw)
         if not normalized_csv["created_at"] or not normalized_csv["hospital_id"]:
             continue
@@ -638,6 +685,37 @@ def _evaluate_candidate(name: str, model: Any, train_rows: list[dict[str, Any]],
         "training_rows": len(train_rows),
         "validation_rows": len(validation_rows),
     }
+
+
+def _upsert_training_records(rows: list[dict[str, Any]]) -> int:
+    created = 0
+    for row in rows:
+        try:
+            record = ForecastTrainingRecord(
+                request_id=str(row.get("request_id", "")) or None,
+                created_at=datetime.fromisoformat(str(row.get("created_at"))) if row.get("created_at") else datetime.utcnow(),
+                hospital_id=str(row.get("hospital_id", "")) or None,
+                county=str(row.get("county", "")) or None,
+                blood_type=str(row.get("blood_type", "")) or None,
+                urgency_level=str(row.get("urgency_level", "")) or None,
+                units_needed=_safe_int(row.get("units_needed", 0)),
+                target=max(0.0, float(row.get("target", 0.0) or 0.0)),
+                recent_hospital_requests_30d=_safe_int(row.get("recent_hospital_requests_30d", 0)),
+                recent_hospital_requests_90d=_safe_int(row.get("recent_hospital_requests_90d", 0)),
+                recent_county_requests_30d=_safe_int(row.get("recent_county_requests_30d", 0)),
+                recent_blood_type_requests_30d=_safe_int(row.get("recent_blood_type_requests_30d", 0)),
+                recent_blood_type_requests_90d=_safe_int(row.get("recent_blood_type_requests_90d", 0)),
+                county_stock_total=_safe_int(row.get("county_stock_total", 0)),
+                county_stock_pressure=float(row.get("county_stock_pressure", 0.0) or 0.0),
+                bank_count_in_county=_safe_int(row.get("bank_count_in_county", 0)),
+                source=str(row.get("source", "uploaded")) or "uploaded",
+            )
+            db.session.add(record)
+            db.session.commit()
+            created += 1
+        except Exception:
+            db.session.rollback()
+    return created
 
 
 def _select_best_model(train_rows: list[dict[str, Any]], validation_rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1198,6 +1276,7 @@ def _get_shap_summary(pipeline: Any | None, feature_row: dict[str, Any], top_n: 
                 {
                     "feature": _humanize_feature_name(name),
                     "value": float(value),
+                    "impact": "higher" if float(value) > 0 else "lower",
                 }
                 for name, value in entries
             ]
@@ -1224,6 +1303,7 @@ def _get_shap_summary(pipeline: Any | None, feature_row: dict[str, Any], top_n: 
             {
                 "feature": _humanize_feature_name(name),
                 "value": float(value),
+                "impact": "higher" if float(value) >= 0 else "lower",
             }
             for name, value in entries
         ]
@@ -1277,6 +1357,12 @@ def _generate_forecast_summary(
         )
 
     pressure = round(stats.get("county_pressure", {}).get(hospital.county or "Unknown", 1.0), 2)
+    summary_drivers = []
+    for driver in drivers[:3]:
+        feature_name = driver.get("feature", "demand pattern")
+        impact = driver.get("impact") or ("higher" if float(driver.get("value", 0)) >= 0 else "lower")
+        summary_drivers.append(f"{feature_name} ({impact})")
+
     prompt = (
         "You are a clinical operations assistant writing for Kenyan hospital staff. "
         "In two concise sentences, explain why the upcoming blood demand forecast is what it is, "
@@ -1289,7 +1375,7 @@ def _generate_forecast_summary(
         f"Recent requests in last 30 days: {int(stats.get('hospital_30', {}).get(hospital.id, 0))}\n"
         f"County stock pressure: {pressure}\n"
         "Key drivers: "
-        + ", ".join([f"{driver['feature']} ({driver['impact']})" for driver in drivers[:3]])
+        + ", ".join(summary_drivers)
         + "\n\nWrite a short, reassuring explanation for hospital staff."
     )
 
@@ -1318,10 +1404,21 @@ def _build_forecast_explanation(
 ) -> dict[str, Any]:
     pipeline = bundle.get("model_selection", {}).get("pipeline")
     sample_row = _representative_forecast_feature_row(bundle, hospital)
-    drivers = bundle.get("stats", {}).get("shap_summary") or []
+    shap_summary = bundle.get("stats", {}).get("shap_summary", []) or []
+    drivers = [driver for driver in shap_summary if "impact" in driver]
 
     if not drivers:
         drivers = _get_shap_drivers(pipeline, sample_row, top_n=3)
+
+    if not drivers and shap_summary:
+        drivers = [
+            {
+                "feature": item.get("feature", "demand pattern"),
+                "impact": item.get("impact") or ("higher" if float(item.get("value", 0)) >= 0 else "lower"),
+                "strength": abs(float(item.get("value", 0))),
+            }
+            for item in shap_summary[:3]
+        ]
 
     if not drivers:
         drivers = [
@@ -1340,7 +1437,6 @@ def _build_forecast_explanation(
         stats,
     )
 
-    shap_summary = bundle.get("stats", {}).get("shap_summary", [])
     return {
         "summary": summary,
         "drivers": drivers,
