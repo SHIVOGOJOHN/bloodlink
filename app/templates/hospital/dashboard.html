@@ -259,7 +259,8 @@
         <div class="tiny text-muted">A single trained model predicts your 14-day hospital blood demand, with automated retraining when records change. You can also refresh it manually.</div>
       </div>
       <div class="forecast-actions-controls">
-        <div class="tiny text-muted mb-2">Upload a hospital training CSV with fields like <strong>request_id, hospital_id, county, blood_type, urgency_level, units_needed, target, created_at</strong>. Extra relevant columns are accepted.</div>
+        <div class="tiny text-muted mb-2">Upload a hospital training CSV that follows the sample schema. Required fields include <strong>request_id, created_at, hospital_id, county, blood_type, urgency_level, units_needed, target</strong>. Additional columns are accepted and will be handled by the data pipeline.</div>
+        <div class="tiny text-muted mb-2"><a href="{{ url_for('static', filename='training_example.csv') }}" class="text-primary">Download a sample CSV file</a> to verify the format before uploading.</div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
           <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="m-0">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
