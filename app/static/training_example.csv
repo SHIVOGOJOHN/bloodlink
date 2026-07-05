@@ -1,2 +1,2 @@
-request_id,created_at,hospital_id,county,blood_type,urgency_level,units_needed,target,recent_hospital_requests_30d,recent_hospital_requests_90d,recent_county_requests_30d,recent_blood_type_requests_30d,recent_blood_type_requests_90d,county_stock_total,county_stock_pressure,bank_count_in_county,source
-REQ-20260705-001,2026-06-30T10:30:00Z,HOSP-001,Nairobi,O+,urgent,5,5,12,28,48,18,44,180,22,5,uploaded
+blood_type,urgency_level,units_needed,target,recent_hospital_requests_30d,recent_hospital_requests_90d,recent_county_requests_30d,recent_blood_type_requests_30d,recent_blood_type_requests_90d,county_stock_total,county_stock_pressure,bank_count_in_county,source
+O+,urgent,5,5,12,28,48,18,44,180,0.22,5,uploaded
