@@ -145,7 +145,7 @@
                 {% if req.status == 'open' %}
                   <span class="badge bg-warning text-dark">Open</span>
                 {% elif req.status == 'dispatched' %}
-                  <span class="badge bg-info text-dark" title="Dispatched by {{ req.fulfilled_by_bank.name if req.fulfilled_by_bank else 'Blood Bank' }} — In Transit">Dispatched</span>
+                  <span class="badge bg-info text-dark" title="Dispatched by {{ req.fulfilled_by_bank.name if req.fulfilled_by_bank else 'Blood Bank' }} - In Transit">Dispatched</span>
                   <form method="POST" action="{{ url_for('hospital.confirm_receipt', request_id=req.id) }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size:0.75rem;">Confirm Receipt</button>
@@ -174,7 +174,7 @@
         <div class="fw-semibold mb-1" style="font-size:1rem;">
           Matched Donors
           {% if latest_request %}
-            — {{ latest_request.blood_type }}, {{ latest_request.units_needed }} unit(s)
+            - {{ latest_request.blood_type }}, {{ latest_request.units_needed }} unit(s)
           {% endif %}
         </div>
         <div class="tiny text-muted mb-3">
@@ -264,14 +264,16 @@
           <button type="submit" class="btn btn-sm btn-primary">Run forecast now</button>
         </form>
 
-        <form method="POST" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center m-0">
+        <form method="POST" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data" class="m-0">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <label class="btn btn-sm btn-outline-secondary mb-0" style="display:inline-flex;align-items:center;gap:8px;">
-            <input type="file" name="training_csv" accept=".csv" required style="display:none;" onchange="this.form.querySelector('.chosen-file').textContent = this.files && this.files.length ? this.files[0].name : ''">
-            Choose file
-          </label>
-          <div class="tiny text-muted chosen-file" style="min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-          <button type="submit" class="btn btn-sm btn-success">Upload</button>
+          <div class="form-file-row">
+            <label class="btn btn-sm btn-outline-secondary mb-0">
+              Choose CSV
+              <input type="file" name="training_csv" accept=".csv" required hidden onchange="this.closest('form').querySelector('.chosen-file').textContent = this.files && this.files.length ? this.files[0].name : 'No file chosen'">
+            </label>
+            <div class="tiny text-muted chosen-file" aria-live="polite">No file chosen</div>
+            <button type="submit" class="btn btn-sm btn-success">Upload CSV</button>
+          </div>
         </form>
       </div>
 

@@ -2,8 +2,8 @@
 {% block title %}Hospital Help - BloodLink{% endblock %}
 {% block content %}
 <div class="help-page container">
-  <h1>Hospital staff — How to use BloodLink</h1>
-  <p class="lead">This page explains what you see and how to use it. Read slowly — everything you need is here.</p>
+  <h1>Hospital staff - How to use BloodLink</h1>
+  <p class="lead">This page explains what you see and how to use it. Read carefully, and everything you need is here.</p>
 
   <h2>Overview</h2>
   <p>
@@ -60,7 +60,7 @@
   <h2>Practical tips</h2>
   <ul>
     <li>Always double-check the units before accepting a transfer.</li>
-    <li>When creating a request, be precise about urgency—this helps the system prioritize.</li>
+    <li>When creating a request, be precise about urgency - this helps the system prioritize.</li>
     <li>Use the forecast to plan for the next two weeks, but always confirm availability with blood banks.</li>
   </ul>
 
@@ -69,5 +69,7 @@
     For help, contact your regional BloodLink administrator or use the contact form in the app. If something seems wrong with the data,
     note the date and the affected entries when you ask for help.
   </p>
+
+  {% include 'help/_contact_form.html' %}
 </div>
 {% endblock %}

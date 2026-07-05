@@ -442,6 +442,103 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   scrollbar-color: var(--border) transparent;
   padding-right: 4px;
 }
+
+.help-page {
+  display: grid;
+  gap: 1.4rem;
+  max-width: 960px;
+  margin: 0 auto;
+  padding-bottom: 1rem;
+}
+.help-page h1 {
+  font-size: 2rem;
+  margin-bottom: 0.35rem;
+}
+.help-page .lead {
+  font-size: 1rem;
+  max-width: 780px;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+.help-page h2 {
+  font-size: 1.05rem;
+  margin-top: 1.5rem;
+}
+.help-page p,
+.help-page ul {
+  max-width: 780px;
+  line-height: 1.75;
+}
+.help-page ul {
+  padding-left: 1.2rem;
+  margin-top: 0.75rem;
+}
+.help-page li {
+  margin-bottom: 0.6rem;
+}
+.help-contact-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.help-contact-box h2 {
+  margin-bottom: 0.9rem;
+}
+.help-contact-box .form-group {
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text);
+}
+.form-group input,
+.form-group textarea,
+.form-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--white);
+}
+.form-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.6rem;
+}
+.form-file-row .chosen-file {
+  min-width: 180px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.forecast-chart-panel {
+  min-height: 280px;
+  position: relative;
+}
+.forecast-chart-panel canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+@media (max-width: 768px) {
+  .page-header .d-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .page-header .btn {
+    width: 100%;
+  }
+  .form-file-row {
+    width: 100%;
+  }
+}
 .match-list-scroll::-webkit-scrollbar { width: 5px; }
 .match-list-scroll::-webkit-scrollbar-track { background: transparent; }
 .match-list-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }

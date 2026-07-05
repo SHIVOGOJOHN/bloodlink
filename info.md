@@ -1,22 +1,30 @@
-- I do not want my UI to have gradients, containers, etc. You will use the exact same UI I used for my other app: C:\Users\adm\.vscode\Products\Freelancing
-
-- Do not add redundant/meaningless stuff, I want my flask app to run very fast, you could use flask compress if necessary.
-
-- Design everythimng with data security in mind, because this is patient data, which is very sensitive
-
-- Later, when we reach that point, you will create the example.env which I will reference the variables to ad keys to my actual .env
-
-- I will be using MySQL database, not SQLite. I will also use Google auth and email login/Signup, with password reset. You can see the exact logic for this in my other app; C:\Users\adm\.vscode\Products\Freelancing
-
-- Also you can see/borrow the logic for smtp and user account profile in my other app: C:\Users\adm\.vscode\Products\Freelancing
-
-- You can also borrow concepts from; C:\Users\adm\.vscode\Products\Freelancing\ARCHITECTURE.md
-
-- Also no emojis in my app, not even one, use only svgs and icons as in my other app; C:\Users\adm\.vscode\Products\Freelancing
-
-- For the donors by a county-distance ranking, you need to implement mobile phone location access, or other means to get the exact location of an individual(eg by subcounty, or ward, or constituency level). This would be better than county level because some Counties are too big, which beats the whole point of emergency blood. Update the donor and other profiles to include the updated/required fields.
-
-- Restricted access for hospital and blood bank roles.
 
 
-a Partner With Us section. yoiu can be contacted via a contact form, etc.
+The top containers/elements in the Operational Demand Forecast container, are poorly arranged/moved far left I guess because of the Upload button or something else, fix that. Also i told you to reinforce and provide an example schema, could be a CSV file of what is expected to be uploaded by the hospital, because what if the hospital uploads its own data that has different columns, also I hope you implemeted the correct architectuire to handle such cases, because as we discussed earlier, hospitals eg hospital A, might have different features than hospital B, or C, so this is an issue that should be carefuylly handled, by either provididng an example schema(eg a downloadable csv example, or preferably the whole csv file of the updated/latest data used to train the model) that hospitals should stick to, or an automation pipeline to handle that(which might be inefficient) or if you have your own better methods to handle such implement those, and if you have everything handled already ignore this. 
+
+Also there are no animations in my app, it's too static and boring. So for instance when I run the forecast now, the whole page reloads, this is poor design, you could implement a spinner or loader for that. Also the metrics in the predictions dashboard say e.g, 2.74 units predicted, how will the hospital staff know what this is, is it 200, 20000, 20000? what exactly is it, do something about that. I also told you these metrics are not relevant for hospital staff, they are occupying space for nothing, remove them:
+Model
+ridge
+selected automatically
+Validation RMSE
+0.0005
+error on holdout
+Updated
+2026-07-04
+most recent
+
+Also it just says there choiose file, how will the hsopital staff know what they are supposed to upload?, do something about that
+
+Also for the predictions, does the model predict based on recent data, or how does it work. Because it's not logical to predict upcoming blood demand based on all the data, it ought to be the most recent data(based on real world scnarios, you'll select the most prefered timeframe). So ensure the correct logic for this is applied. 
+
+Also ensure this is reinforced/implemented:"The hospital uploads their dataset in csv format following the example schema provided. It's however not mandatory they stick to the schema, they could add other relevent dataset features that could help in training the models. The system's data pipeline handles that efficiently, so it's not a problem." 
+
+I also wanted it to be Constituency and ward level, basically distance-based(preferrably less than 5km) instead of county level, some counties are too big, which beats the entire purpose of blood dontation during emergency.
+
+Also when the hospital posts they need blood, all eligible donors, should get an email notification telling them to convey themselves at that hospital, with the link to the hospital's profile. also blood banks should recieve the email to fullfill/deliver blood to the blood bank, also with the link to the hospital profile, the same that is shown in the fulfill section of the dashoard; you know what I mean. Impliment this(smtp). 
+
+Also when the hospital confirms the donation is sucessful from their dashboard, the donor is supposed to get loyalty points(to prioritize em in case they also need blood in the future), updated to their dashboard, and a notification email that the donation has been successful(smtp). Also when it confirms that the blood delivered by the blood bank has been recieved, the blood bank recieves a confirmation email(smtp). So impliment this. 
+
+
+
+

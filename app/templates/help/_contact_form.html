@@ -1,0 +1,17 @@
+<div class="help-section help-contact-box">
+  <h2>Need help?</h2>
+  <p>Use this form to send a support request directly through BloodLink. Include your role, the hospital or blood bank, and a clear description of the issue.</p>
+  <form method="post" action="{{ url_for('help.contact') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="redirect_to" value="{{ request.path }}">
+    <div class="form-group">
+      <label class="form-label" for="contact_subject">Subject</label>
+      <input id="contact_subject" name="subject" type="text" class="form-control" maxlength="120" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="contact_message">Message</label>
+      <textarea id="contact_message" name="message" class="form-control" rows="5" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Send support request</button>
+  </form>
+</div>

@@ -2,7 +2,7 @@
 {% block title %}Admin Help - BloodLink{% endblock %}
 {% block content %}
 <div class="help-page container">
-  <h1>Admin — How to use BloodLink</h1>
+  <h1>Admin - How to use BloodLink</h1>
   <p class="lead">Guidance for administrators and support staff.</p>
 
   <h2>Overview</h2>
@@ -19,5 +19,7 @@
   <p>
     For support requests, gather the user's role, the time of the issue, and any relevant screenshots. Use the admin tools to inspect database records if needed.
   </p>
+
+  {% include 'help/_contact_form.html' %}
 </div>
 {% endblock %}
