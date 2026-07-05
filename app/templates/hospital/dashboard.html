@@ -262,9 +262,12 @@
         <div class="tiny text-muted mb-2">Upload a hospital training CSV that follows the sample schema. Required fields include <strong>request_id, created_at, hospital_id, county, blood_type, urgency_level, units_needed, target</strong>. Additional columns are accepted and will be handled by the data pipeline.</div>
         <div class="tiny text-muted mb-2"><a href="{{ url_for('static', filename='training_example.csv') }}" class="text-primary">Download a sample CSV file</a> to verify the format before uploading.</div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
-          <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="m-0">
+          <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="m-0 forecast-action-form" data-loading-label="Running forecast…">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-sm btn-primary">Run forecast now</button>
+            <button type="submit" class="btn btn-sm btn-primary forecast-action-button">
+              <span class="button-text">Run forecast now</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
           </form>
 
           <form method="POST" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data" class="m-0">
@@ -313,29 +316,7 @@
       </div>
     </div>
 
-    <div class="row g-3 mt-3">
-      <div class="col-md-4">
-        <div class="stat-card h-100">
-          <div class="stat-label">Model</div>
-          <div class="stat-value" style="font-size:1rem;">{{ forecast_panel.training_summary.selected_model or 'best fit' }}</div>
-          <div class="stat-sub">selected automatically</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="stat-card h-100">
-          <div class="stat-label">Validation RMSE</div>
-          <div class="stat-value">{{ forecast_panel.training_summary.selected_model_rmse if forecast_panel.training_summary.selected_model_rmse is not none else 'n/a' }}</div>
-          <div class="stat-sub">error on holdout</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="stat-card h-100">
-          <div class="stat-label">Updated</div>
-          <div class="stat-value">{{ forecast_panel.training_summary.trained_at[:10] if forecast_panel.training_summary.trained_at else 'n/a' }}</div>
-          <div class="stat-sub">most recent</div>
-        </div>
-      </div>
-    </div>
+    <div class="tiny text-muted mt-3">Predictions are expressed in blood units required by your hospital. For example, <strong>2.74</strong> means approximately 3 blood unit bags needed, not milliliters or currency. The model focuses on recent demand and local stock patterns to keep the forecast relevant.</div>
 
     <div class="row g-3 mt-3">
       <div class="col-md-4">
@@ -398,6 +379,7 @@
       const data = forecastDataElement ? JSON.parse(forecastDataElement.dataset.source) : null;
       const canvas = document.getElementById('forecast-chart');
       const refreshUrl = forecastDataElement ? forecastDataElement.dataset.refreshUrl : '';
+      const forecastButtons = Array.from(document.querySelectorAll('.forecast-action-form button'));
       if (!canvas || !data || !data.daily_totals || !data.daily_totals.length) return;
       const labels = data.daily_totals.map((item) => item.date);
       const values = data.daily_totals.map((item) => item.predicted_units);
@@ -426,6 +408,17 @@
       });
 
       window.BloodLinkForecastRefreshUrl = refreshUrl;
+
+      const forecastForms = document.querySelectorAll('.forecast-action-form');
+      forecastForms.forEach((form) => {
+        form.addEventListener('submit', () => {
+          const button = form.querySelector('.forecast-action-button');
+          if (!button) return;
+          button.classList.add('loading');
+          button.disabled = true;
+          form.querySelectorAll('input, button, select, textarea').forEach((field) => field.setAttribute('disabled', 'disabled'));
+        });
+      });
 
       const shapCanvas = document.getElementById('shap-chart');
       if (shapCanvas && data && data.forecast_explanation && data.forecast_explanation.shap_summary) {
