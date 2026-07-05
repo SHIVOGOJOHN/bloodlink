@@ -400,7 +400,9 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
+          layout: { padding: { bottom: 18 } },
           scales: {
+            x: { ticks: { maxRotation: 0, minRotation: 0, autoSkip: true }, grid: { display: false } },
             y: { beginAtZero: true, ticks: { precision: 0 } },
           },
         },
@@ -415,7 +417,27 @@
           if (!button) return;
           button.classList.add('loading');
           button.disabled = true;
-          form.querySelectorAll('input, button, select, textarea').forEach((field) => field.setAttribute('disabled', 'disabled'));
+          // Disable interactive fields but keep hidden CSRF token (and other hidden fields) enabled so the server receives them
+          form.querySelectorAll('input, button, select, textarea').forEach((field) => {
+            const name = field.getAttribute('name');
+            const type = field.getAttribute('type');
+            if (type === 'hidden' || name === 'csrf_token') return;
+            field.setAttribute('disabled', 'disabled');
+          });
+        });
+      });
+
+      // Clean up any lingering loading states when the page loads (handles error responses)
+      window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.forecast-action-button.loading').forEach((btn) => {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+        });
+        document.querySelectorAll('.forecast-action-form [disabled]').forEach((field) => {
+          const name = field.getAttribute('name');
+          const type = field.getAttribute('type');
+          if (type === 'hidden' || name === 'csrf_token') return;
+          field.removeAttribute('disabled');
         });
       });
 
@@ -436,13 +458,15 @@
             }],
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              y: { beginAtZero: true, ticks: { precision: 0 } },
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              layout: { padding: { bottom: 8 } },
+              scales: {
+                x: { ticks: { maxRotation: 0, minRotation: 0, autoSkip: true }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+              },
             },
-          },
         });
       }
     })();
