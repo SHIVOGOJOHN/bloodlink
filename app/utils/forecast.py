@@ -279,11 +279,10 @@ def _load_training_records() -> list[dict[str, Any]]:
         return []
 
 
-def _training_row_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
+def _training_row_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
     return (
         str(row.get("request_id", "")).strip(),
         str(row.get("hospital_id", "")).strip(),
-        str(row.get("created_at", "")).strip(),
         str(row.get("blood_type", "")).strip(),
         str(row.get("target", "")).strip(),
     )
@@ -355,29 +354,52 @@ def _write_training_csv_from_rows(rows: list[dict[str, Any]]) -> None:
             writer.writerow(_training_row_to_csv_row(row))
 
 
-def upload_training_csv_stream(file_stream: io.TextIOBase) -> tuple[int, int]:
+def _computed_request_id(features: dict[str, Any], hospital_id: str) -> str:
+    hash_input = "|".join(
+        str(features.get(key, "")).strip()
+        for key in [
+            "blood_type",
+            "urgency_level",
+            "units_needed",
+            "target",
+            "recent_hospital_requests_30d",
+            "recent_hospital_requests_90d",
+            "recent_county_requests_30d",
+            "recent_blood_type_requests_30d",
+            "recent_blood_type_requests_90d",
+            "county_stock_total",
+            "county_stock_pressure",
+            "bank_count_in_county",
+            hospital_id,
+        ]
+    )
+    return hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
+
+
+def upload_training_csv_stream(file_stream: io.TextIOBase, hospital: Hospital) -> tuple[int, int]:
     reader = csv.DictReader(file_stream)
     existing_csv_rows = _load_training_csv_rows()
     existing_db_rows = _load_training_records()
     existing_keys = {
-        tuple(_normalize_training_row(row)[key] for key in ["request_id", "hospital_id", "created_at", "blood_type", "target"])
+        _training_row_key(_normalize_training_row(row))
         for row in existing_csv_rows + existing_db_rows
     }
     rows_to_append: list[dict[str, Any]] = []
+    hospital_id_value = f"hospital-{hospital.id}"
+    hospital_county = (hospital.county or "Unknown").strip() or "Unknown"
 
     for raw in reader:
         normalized = _normalize_training_row(raw)
-        key = (
-            normalized["request_id"],
-            normalized["hospital_id"],
-            normalized["created_at"],
-            normalized["blood_type"],
-            normalized["target"],
-        )
+        normalized["hospital_id"] = hospital_id_value
+        normalized["county"] = hospital_county
+        if not normalized["created_at"]:
+            normalized["created_at"] = datetime.utcnow().isoformat()
+        normalized["request_id"] = _computed_request_id(normalized, hospital_id_value)
+        normalized["source"] = normalized.get("source") or "uploaded"
+        key = _training_row_key(normalized)
         if key in existing_keys:
             continue
         existing_keys.add(key)
-        normalized["source"] = normalized.get("source") or "uploaded"
         rows_to_append.append(normalized)
 
     if rows_to_append:

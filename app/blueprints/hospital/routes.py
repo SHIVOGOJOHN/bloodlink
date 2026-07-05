@@ -148,7 +148,7 @@ def upload_training_data():
         file_bytes = file_storage.read()
         payload = file_bytes.decode("utf-8-sig")
         uploaded_url = upload_training_csv(file_bytes, file_storage.filename)
-        imported_count, existing_count = upload_training_csv_stream(StringIO(payload))
+        imported_count, existing_count = upload_training_csv_stream(StringIO(payload), hospital)
         if imported_count > 0:
             invalidate_forecast_cache()
             retrain_forecast_models(force_retrain=True)

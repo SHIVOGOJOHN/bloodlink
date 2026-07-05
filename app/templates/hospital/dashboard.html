@@ -259,8 +259,8 @@
         <div class="tiny text-muted">A single trained model predicts your 14-day hospital blood demand, with automated retraining when records change. You can also refresh it manually.</div>
       </div>
       <div class="forecast-actions-controls">
-        <div class="tiny text-muted mb-2">Upload a hospital training CSV that follows the sample schema. Required fields include <strong>request_id, created_at, hospital_id, county, blood_type, urgency_level, units_needed, target</strong>. Additional columns are accepted and will be handled by the data pipeline.</div>
-        <div class="tiny text-muted mb-2"><a href="{{ url_for('static', filename='training_example.csv') }}" class="text-primary">Download a sample CSV file</a> to verify the format before uploading.</div>
+        <div class="tiny text-muted mb-2">Upload a hospital training CSV with only the feature columns required by the model. Hospital metadata is filled automatically from your account, so you do not need to provide <strong>request_id, created_at, hospital_id,</strong> or <strong>county</strong>.</div>
+        <div class="tiny text-muted mb-2"><a href="{{ url_for('static', filename='training_example.csv') }}" class="text-primary">Download a feature-only sample CSV file</a> to verify the format before uploading.</div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
           <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="m-0 forecast-action-form" data-loading-label="Running forecast…">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -369,7 +369,6 @@
       </div>
     </div>
 
-    <div class="tiny text-muted mt-3">{{ forecast_panel.refresh_policy }} This is planning support only, not a clinical decision engine.</div>
   </div>
 
   <div id="forecast-data" data-source='{{ forecast_panel | tojson | safe }}' data-refresh-url="{{ url_for('api.hospital_forecast', hospital_id=(hospital.id if hospital else 0)) }}" hidden></div>
