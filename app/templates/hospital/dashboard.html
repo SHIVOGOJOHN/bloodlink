@@ -12,7 +12,6 @@
       <h1 class="page-title">Hospital Dashboard</h1>
       <p class="page-subtitle">Check blood bank stock, create requests, coordinate with matched donors, and view an operational demand forecast.</p>
     </div>
-    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -38,7 +37,7 @@
         <div class="fw-semibold" style="font-size:1.05rem;">{{ hospital.name }}</div>
         <div class="tiny text-muted">{{ hospital.county }} County &nbsp;·&nbsp; {{ hospital.contact_phone or 'No phone' }}</div>
       </div>
-      <a href="{{ url_for('hospital.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">View Profile</a>
+      <a href="{{ url_for('hospital.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">Profile</a>
     </div>
   </div>
   {% endif %}
@@ -117,7 +116,7 @@
         <div class="match-list-scroll">
           {% for match in matching_results %}
           <div class="match-item">
-            <div class="d-flex justify-content-between align-items-start gap-3">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
               <div class="d-flex gap-3 align-items-start flex-grow-1">
                 {% if match.donor.profile_pic_url %}
                   <img src="{{ match.donor.profile_pic_url }}" alt="{{ match.donor.name }}" class="match-avatar">

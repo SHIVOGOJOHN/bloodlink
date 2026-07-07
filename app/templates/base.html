@@ -32,7 +32,6 @@
             {% set role_labels = {'donor': 'Donor', 'hospital_staff': 'Hospital staff', 'bloodbank_staff': 'Blood bank staff', 'admin': 'Admin'} %}
             {% if current_user.role == 'hospital_staff' %}
               <a href="{{ url_for('hospital.dashboard') }}" class="{% if request.endpoint and request.endpoint.startswith('hospital.') %}active{% endif %}">Dashboard</a>
-              <a href="{{ url_for('hospital.profile') }}" class="{% if request.endpoint == 'hospital.profile' %}active{% endif %}">Profile</a>
             {% elif current_user.role == 'bloodbank_staff' %}
               <a href="{{ url_for('bloodbank.dashboard') }}" class="{% if request.endpoint and request.endpoint.startswith('bloodbank.') %}active{% endif %}">Inventory</a>
               <a href="{{ url_for('bloodbank.profile') }}" class="{% if request.endpoint == 'bloodbank.profile' %}active{% endif %}">Profile</a>
@@ -80,7 +79,6 @@
               <a href="{{ url_for('hospital.create_request_page') }}" class="mobile-drawer-link {% if request.endpoint == 'hospital.create_request_page' %}active{% endif %}">Create request</a>
               <a href="{{ url_for('hospital.inventory') }}" class="mobile-drawer-link {% if request.endpoint == 'hospital.inventory' %}active{% endif %}">Inventory</a>
               <a href="{{ url_for('hospital.forecast') }}" class="mobile-drawer-link {% if request.endpoint == 'hospital.forecast' %}active{% endif %}">Forecast</a>
-              <a href="{{ url_for('hospital.profile') }}" class="mobile-drawer-link {% if request.endpoint == 'hospital.profile' %}active{% endif %}">Profile</a>
             {% elif current_user.role == 'bloodbank_staff' %}
               <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link {% if request.endpoint and request.endpoint.startswith('bloodbank.') %}active{% endif %}">Inventory</a>
               <a href="{{ url_for('bloodbank.dashboard') }}#requests" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.dashboard' %}active{% endif %}">Incoming requests</a>

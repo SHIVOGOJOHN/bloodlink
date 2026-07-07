@@ -1,0 +1,2 @@
+hospital_id,county,blood_type,urgency_level,units_needed,target,created_at,day_of_week_name,month_name,is_weekend,holiday_flag,recent_hospital_requests_30d,recent_hospital_requests_90d,recent_county_requests_30d,recent_blood_type_requests_30d,recent_blood_type_requests_90d,county_stock_total,county_stock_pressure,bank_count_in_county,source
+H-001,Nairobi,O+,urgent,6,4,2026-06-01,Mon,Jun,False,False,2,8,12,3,9,120,0.42,5,uploaded
