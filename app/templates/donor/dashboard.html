@@ -2,16 +2,16 @@
 {% block title %}Donor Dashboard — BloodLink{% endblock %}
 {% block content %}
 
-  {# ── Page header ──────────────────────────────────────────── #}
+  {# Page header #}
   <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
     <div>
       <h1 class="page-title">Donor Dashboard</h1>
-      <p class="page-subtitle">Track your eligibility, achievements, and find donation requests near you.</p>
+      <p class="page-subtitle">Track your eligibility, achievements, and find donation requests close to you.</p>
     </div>
     <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
 
-  {# ── Flash messages ───────────────────────────────────────── #}
+  {# Flash messages #}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -20,115 +20,160 @@
     {% endif %}
   {% endwith %}
 
-  {# ── Donor profile identity banner ───────────────────────── #}
-  {% if donor %}
+  {# Donor overview #}
   <div class="card-container mb-4">
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
       {% if donor.profile_pic_url %}
-        <img src="{{ donor.profile_pic_url }}" alt="{{ donor.name }}"
-          style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">
+        <img src="{{ donor.profile_pic_url }}" alt="{{ donor.name }}" class="rounded-circle" style="width:64px;height:64px;object-fit:cover;border:2px solid var(--border);">
       {% else %}
-        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--red),#7f1d1d);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">
+        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:64px;height:64px;background:linear-gradient(135deg,var(--red),#7f1d1d);color:#fff;font-size:1.5rem;font-weight:700;">
           {{ (donor.name or 'D')[0].upper() }}
         </div>
       {% endif %}
       <div>
-        <div class="fw-semibold" style="font-size:1.05rem;">{{ donor.name }}</div>
+        <div class="fw-semibold" style="font-size:1.1rem;">{{ donor.name }}</div>
         <div class="tiny text-muted">
           <span class="badge bg-danger me-1">{{ donor.blood_type }}</span>
-          {{ donor.county }} County
-          {% if donor.subcounty %} &bull; {{ donor.subcounty }}{% endif %}
+          {{ donor.county }} County{% if donor.subcounty %}, {{ donor.subcounty }}{% endif %}
         </div>
       </div>
-      <a href="{{ url_for('donor.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">View Profile</a>
+      <a href="{{ url_for('donor.profile') }}" class="btn btn-secondary btn-sm ms-auto">View Profile</a>
     </div>
   </div>
-  {% endif %}
 
-  {# ── Quick-stat row ───────────────────────────────────────── #}
+  {# Stats grid #}
   <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
       <div class="stat-card">
         <div class="stat-label">Donation Eligibility</div>
-        <div class="stat-value" style="font-size: 1.35rem; margin-top: 8px; margin-bottom: 2px;">
-          {% if not donor or not donor.last_donation_date %}
-            <span class="text-green">&#x2713; Eligible</span>
-          {% elif eligible %}
+        <div class="stat-value mt-2 mb-1" style="font-size:1.35rem;">
+          {% if eligible %}
             <span class="text-green">&#x2713; Eligible</span>
           {% else %}
-            <span style="color:var(--warning);">Ineligible</span>
+            <span class="text-warning">Ineligible</span>
           {% endif %}
         </div>
         <div class="stat-sub">
-          {% if not donor or not donor.last_donation_date %}
-            No previous donations recorded.
+          {% if not donor.last_donation_date %}
+            No donation history recorded.
           {% elif eligible %}
             {{ days_since_last }} days since last donation.
           {% else %}
-            Wait {{ 90 - days_since_last }} more days.
+            Available again in {{ 90 - days_since_last }} days.
           {% endif %}
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
       <div class="stat-card">
-        <div class="stat-label">Donations Completed</div>
-        <div class="stat-value">{{ confirmed_count }}</div>
-        <div class="stat-sub">confirmed donation(s)</div>
+        <div class="stat-label">Confirmed Donations</div>
+        <div class="stat-value mt-2">{{ confirmed_count }}</div>
+        <div class="stat-sub">complete donations</div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
       <div class="stat-card">
         <div class="stat-label">Loyalty Points</div>
-        <div class="stat-value">{{ donor.loyalty_points or 0 }}</div>
-        <div class="stat-sub">points earned from donations</div>
+        <div class="stat-value mt-2">{{ donor.loyalty_points or 0 }}</div>
+        <div class="stat-sub">reward points</div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-lg-3 col-md-6">
       <div class="stat-card">
         <div class="stat-label">Loyalty Rank</div>
-        <div class="stat-value">{{ donor.loyalty_rank }}</div>
-        <div class="stat-sub">based on your total points</div>
+        <div class="stat-value mt-2">{{ donor.loyalty_rank }}</div>
+        <div class="stat-sub">current tier</div>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-label">My Badges</div>
-        <div class="stat-value" style="font-size: 1.15rem; margin-top: 8px; margin-bottom: 2px;">
-          {% if badges %}
-            {% for badge in badges %}
-              <span class="badge" style="background: {{ badge.color }}; color: #fff; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 0.75rem; margin: 0 0.2rem 0.2rem 0;">{{ badge.icon_svg|safe }}{{ badge.name }}</span>
-            {% endfor %}
-          {% else %}
-            <span class="text-muted" style="font-size: 0.9rem; font-weight: 500;">No badges yet</span>
-          {% endif %}
-        </div>
-        <div class="stat-sub">Unlock by completing donations</div>
-      </div>
-    </div>
+  </div>
 
-                {% endif %}
-                &nbsp;·&nbsp; {{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '' }}
+  {# Badges & mission flow #}
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <div class="card-container h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="fw-semibold">Featured Donation Requests</div>
+            <div class="tiny text-muted">Requests near you prioritized by match and urgency.</div>
+          </div>
+          <a href="{{ url_for('donor.nearby_requests') }}" class="btn btn-outline-primary btn-sm">View all {{ nearby_requests_count }} requests</a>
+        </div>
+
+        {% if featured_requests %}
+          <div class="list-group list-group-flush">
+            {% for req in featured_requests %}
+              <div class="list-group-item p-3 mb-2 rounded border">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                  <div>
+                    <div class="fw-semibold">{{ req.hospital.name }}</div>
+                    <div class="tiny text-muted">{{ req.hospital.county }}{% if req.hospital.subcounty %}, {{ req.hospital.subcounty }}{% endif %}</div>
+                  </div>
+                  <div class="text-end">
+                    <span class="badge bg-{{ 'danger' if req.urgency_level == 'urgent' else 'secondary' }}">{{ req.urgency_level|capitalize }}</span>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+                  <span class="badge bg-primary">{{ req.blood_type }}</span>
+                  <span class="badge bg-info text-dark">{{ req.units_needed }} units</span>
+                  {% if req.match %}
+                    <span class="badge bg-success">Compatible</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">No direct match</span>
+                  {% endif %}
+                </div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+                  <div class="tiny text-muted">{{ req.distance_display }} · {{ req.travel_time }}</div>
+                  <a href="tel:{{ req.contact_phone }}" class="btn btn-outline-primary btn-sm">Contact Hospital</a>
+                </div>
               </div>
-            </div>
+            {% endfor %}
           </div>
+        {% else %}
+          <div class="text-muted tiny">No priority donations available near you right now. Check back later for new requests.</div>
+        {% endif %}
+      </div>
+    </div>
 
-          {# Status / Contact button #}
-          <div class="flex-shrink-0">
-            {% if req.hospital and req.hospital.contact_phone %}
-              <a href="tel:{{ req.hospital.contact_phone }}" class="btn btn-outline-primary btn-sm">Contact</a>
-            {% else %}
-              <span class="badge bg-secondary">Active</span>
-            {% endif %}
+    <div class="col-lg-5">
+      <div class="card-container mb-3">
+        <div class="fw-semibold mb-3">Mission Progress</div>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-2"><span>Nearby requests</span><strong>{{ nearby_requests_count }}</strong></div>
+          <div class="progress" style="height:10px; background: var(--border);">
+            <div class="progress-bar bg-primary" role="progressbar" style="width:{{ min(100, nearby_requests_count * 10) }}%"></div>
           </div>
-
         </div>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <div class="text-muted tiny">No open requests near the donor network at this time. Check back later!</div>
-    {% endif %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-2"><span>Confirmed donations</span><strong>{{ confirmed_count }}</strong></div>
+          <div class="progress" style="height:10px; background: var(--border);">
+            <div class="progress-bar bg-success" role="progressbar" style="width:{{ min(100, confirmed_count * 8) }}%"></div>
+          </div>
+        </div>
+        {% if next_badge %}
+          <div class="alert alert-secondary mb-0">
+            <div class="fw-semibold mb-1">Next badge: {{ next_badge.name }}</div>
+            <div class="tiny">Earn {{ next_badge.threshold - confirmed_count }} more confirmed donation(s) to unlock the next achievement.</div>
+          </div>
+        {% else %}
+          <div class="text-muted tiny">You have reached the highest available badge or no further badge is defined.</div>
+        {% endif %}
+      </div>
+
+      <div class="card-container">
+        <div class="fw-semibold mb-3">Eligibility Reminder</div>
+        {% if eligible %}
+          <div class="alert alert-success mb-0">
+            <div class="fw-semibold">Ready to donate.</div>
+            <div class="tiny">You are currently eligible to donate and can respond to urgent requests.</div>
+          </div>
+        {% else %}
+          <div class="alert alert-warning mb-0">
+            <div class="fw-semibold">Next donation possible soon</div>
+            <div class="tiny">Your next eligible date is {{ next_eligible_date.strftime('%Y-%m-%d') if next_eligible_date else 'TBD' }}.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
 {% endblock %}

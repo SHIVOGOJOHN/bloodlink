@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Nearby Donation Requests — BloodLink{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+  <div>
+    <h1 class="page-title">Nearby Donation Requests</h1>
+    <p class="page-subtitle">Browse all open blood requests sorted by urgency and proximity.</p>
+  </div>
+  <a href="{{ url_for('donor.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card-container mb-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <div class="fw-semibold">Found {{ requests|length }} open request{{ '' if requests|length == 1 else 's' }}</div>
+      <div class="tiny text-muted">Urgent requests appear first, then the closest matches.</div>
+    </div>
+    <div class="tiny text-muted">{{ donor.blood_type }} donor • {{ donor.county }} County</div>
+  </div>
+
+  {% if requests %}
+    <div class="list-group list-group-flush">
+      {% for req in requests %}
+        <div class="list-group-item p-3 mb-2 rounded border">
+          <div class="d-flex justify-content-between align-items-start gap-3">
+            <div>
+              <div class="fw-semibold">{{ req.hospital.name }}</div>
+              <div class="tiny text-muted">{{ req.hospital.county }}{% if req.hospital.subcounty %}, {{ req.hospital.subcounty }}{% endif %}</div>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-{{ 'danger' if req.urgency_level == 'urgent' else 'secondary' }}">{{ req.urgency_level|capitalize }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+            <span class="badge bg-primary">{{ req.blood_type }}</span>
+            <span class="badge bg-info text-dark">{{ req.units_needed }} units</span>
+            {% if req.match %}
+              <span class="badge bg-success">Compatible</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">No direct match</span>
+            {% endif %}
+          </div>
+
+          <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+            <div class="tiny text-muted">{{ req.distance_display }} · {{ req.travel_time }}</div>
+            <div class="d-flex gap-2 flex-wrap">
+              <a href="tel:{{ req.contact_phone }}" class="btn btn-outline-primary btn-sm">Call Hospital</a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-muted tiny">There are no open nearby requests at this time. Please check back later.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
