@@ -3,9 +3,14 @@ from datetime import datetime, date, timedelta
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 
-from app.models import BloodRequest, DonationRecord, Donor, Hospital
+from app.models import BloodRequest, DonationRecord, Donor, Hospital, ReimbursementRequest
 from app.utils.auth import role_required
-from app.utils.loyalty import get_badges_for_donation_count, get_next_badge
+from app.utils.loyalty import (
+    get_badges_for_donation_count,
+    get_next_badge,
+    get_badge_progress,
+    get_certificates_for_donation_count,
+)
 from app.utils.matching import calculate_haversine_distance, get_distance, is_compatible, is_eligible
 from app.extensions import db
 
@@ -119,6 +124,9 @@ def dashboard():
     confirmed_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
     badges = get_badges_for_donation_count(confirmed_count)
     next_badge = get_next_badge(confirmed_count)
+    badge_progress = get_badge_progress(confirmed_count)
+    certificates = get_certificates_for_donation_count(confirmed_count, donor.blood_type)
+    reimbursements = ReimbursementRequest.query.filter_by(donor_id=donor.id).order_by(ReimbursementRequest.requested_at.desc()).limit(5).all()
 
     nearby_requests = _prepare_nearby_requests(donor, active_requests)
     featured_requests = [req for req in nearby_requests if req["match"]][:3] or nearby_requests[:3]
@@ -134,6 +142,9 @@ def dashboard():
         next_eligible_date=next_eligible_date,
         badges=badges,
         next_badge=next_badge,
+        badge_progress=badge_progress,
+        certificates=certificates,
+        reimbursements=reimbursements,
         confirmed_count=confirmed_count,
     )
 
@@ -282,6 +293,9 @@ def profile():
     donation_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
     badges = get_badges_for_donation_count(donation_count)
     next_badge = get_next_badge(donation_count)
+    badge_progress = get_badge_progress(donation_count)
+    certificates = get_certificates_for_donation_count(donation_count, donor.blood_type)
+    reimbursements = ReimbursementRequest.query.filter_by(donor_id=donor.id).order_by(ReimbursementRequest.requested_at.desc()).limit(5).all()
 
     return render_template(
         "donor/profile.html",
@@ -291,5 +305,8 @@ def profile():
         donation_count=donation_count,
         badges=badges,
         next_badge=next_badge,
+        badge_progress=badge_progress,
+        certificates=certificates,
+        reimbursements=reimbursements,
     )
 

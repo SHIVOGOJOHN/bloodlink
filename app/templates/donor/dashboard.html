@@ -87,6 +87,127 @@
     </div>
   </div>
 
+  <div class="card-container mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <div class="fw-semibold">Rewards & achievements</div>
+        <div class="tiny text-muted">Track your badges, certificates, and donor recognition progress.</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <div class="reward-summary-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <div class="fw-semibold">Next badge</div>
+              {% if badge_progress.next_badge %}
+                <div class="tiny text-muted">{{ badge_progress.next_badge.name }} in {{ badge_progress.needed }} more donation(s).</div>
+              {% else %}
+                <div class="tiny text-muted">You have unlocked every badge in the current loyalty track.</div>
+              {% endif %}
+            </div>
+            {% if badge_progress.next_badge %}
+              <span class="badge" style="background: {{ badge_progress.next_badge.color }}1a; color: {{ badge_progress.next_badge.color }}; border: 1px solid {{ badge_progress.next_badge.color }};">{{ badge_progress.next_badge.threshold }} needed</span>
+            {% endif %}
+          </div>
+          {% if badge_progress.next_badge %}
+            <div class="reward-progress mb-3">
+              <div class="reward-progress-fill" style="width: {{ badge_progress.progress }}%; background: linear-gradient(90deg, #2563eb, #ec4899);"></div>
+            </div>
+            <div class="tiny text-muted">{{ badge_progress.progress }}% toward {{ badge_progress.next_badge.name }}</div>
+          {% else %}
+            <div class="reward-summary-complete text-green">Maximum milestone reached. Keep saving lives!</div>
+          {% endif %}
+          <div class="mt-4">
+            <div class="fw-semibold mb-2">Certificate shelf</div>
+            {% if certificates %}
+              <div class="d-flex flex-wrap gap-2">
+                {% for cert in certificates %}
+                  <div class="certificate-pill" style="border-color: {{ cert.color }}; color: {{ cert.color }};">
+                    <span class="certificate-icon">{{ cert.icon_svg|safe }}</span>
+                    <span>{{ cert.title }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="tiny text-muted">No certificates earned yet. Complete your first donation to unlock one.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="badge-grid">
+          {% if badges %}
+            {% for badge in badges %}
+              <div class="badge-card" style="border-color: {{ badge.color }}22; background: {{ badge.color }}11;">
+                <div class="badge-icon" style="color: {{ badge.color }};">{{ badge.icon_svg|safe }}</div>
+                <div>
+                  <div class="fw-semibold">{{ badge.name }}</div>
+                  <div class="tiny text-muted">{{ badge.description }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="badge-card badge-card-empty">
+              <div class="fw-semibold">No badges yet</div>
+              <div class="tiny text-muted">Donate once to unlock your first achievement.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-lg-6">
+        <div class="reward-box">
+          <div class="fw-semibold mb-3">Badges earned</div>
+          {% if badges %}
+            <div class="badge-grid">
+              {% for badge in badges %}
+                <div class="badge-card badge-card-compact" style="border-color: {{ badge.color }}22; background: {{ badge.color }}11;">
+                  <div class="badge-icon" style="color: {{ badge.color }};">{{ badge.icon_svg|safe }}</div>
+                  <div>
+                    <div class="fw-semibold">{{ badge.name }}</div>
+                    <div class="tiny text-muted">Unlocked at {{ badge.threshold }} donations</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="tiny text-muted">No unlocked badges yet. Your first recognized donation will appear here.</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="reward-box">
+          <div class="fw-semibold mb-3">Reimbursement history</div>
+          {% if reimbursements %}
+            <div class="list-group list-group-flush">
+              {% for reimbursement in reimbursements %}
+                <div class="list-group-item p-3 rounded border mb-2">
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                      <div class="fw-semibold">Ksh {{ reimbursement.amount }}</div>
+                      <div class="tiny text-muted">Requested {{ reimbursement.requested_at.strftime('%Y-%m-%d') }}</div>
+                    </div>
+                    <span class="badge bg-{{ 'success' if reimbursement.status == 'approved' else 'warning' if reimbursement.status == 'pending' else 'secondary' }}">{{ reimbursement.status|capitalize }}</span>
+                  </div>
+                  {% if reimbursement.mpesa_transaction_id %}
+                    <div class="tiny text-muted mt-2">Transaction {{ reimbursement.mpesa_transaction_id }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="tiny text-muted">No reimbursement requests recorded yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   {# Badges & mission flow #}
   <div class="row g-3 mb-4">
     <div class="col-lg-7">

@@ -132,6 +132,42 @@
       {% endif %}
     </div>
 
+    <div class="card-container">
+      <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+        <div>
+          <div class="fw-semibold">Reward progress</div>
+          <div class="tiny text-muted">Watch your next milestone and certificates grow as you donate.</div>
+        </div>
+        {% if badge_progress.next_badge %}
+          <span class="badge" style="background: {{ badge_progress.next_badge.color }}1a; color: {{ badge_progress.next_badge.color }}; border:1px solid {{ badge_progress.next_badge.color }};">{{ badge_progress.next_badge.threshold }} donations</span>
+        {% endif %}
+      </div>
+      {% if badge_progress.next_badge %}
+      <div class="reward-progress mb-3" style="height: 16px; border-radius: 999px; background: var(--border); overflow:hidden;">
+        <div class="reward-progress-fill" style="width: {{ badge_progress.progress }}%; background: linear-gradient(90deg, #2563eb, #ec4899); height:16px;"></div>
+      </div>
+      <div class="tiny text-muted">{{ badge_progress.progress }}% toward {{ badge_progress.next_badge.name }} ({{ badge_progress.needed }} more donation{{ '' if badge_progress.needed == 1 else 's' }}).</div>
+      {% else %}
+      <div class="text-green fw-semibold">Great work — you have unlocked all available badge milestones!</div>
+      {% endif %}
+
+      <div class="mt-4">
+        <div class="fw-semibold mb-2">Certificate shelf</div>
+        {% if certificates %}
+          <div class="d-flex flex-wrap gap-2">
+            {% for cert in certificates %}
+              <div class="certificate-pill" style="border-color: {{ cert.color }}; color: {{ cert.color }};">
+                <span class="certificate-icon">{{ cert.icon_svg|safe }}</span>
+                <span>{{ cert.title }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="tiny text-muted">No certificates yet. Confirm your next donation to earn one.</div>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Badges — only for owner -->
     <div class="card-container">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">

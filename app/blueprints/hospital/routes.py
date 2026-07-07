@@ -124,7 +124,7 @@ def dashboard():
                 "units": s.units_available,
                 "expiry": s.expiry_date,
                 "distance": distance_km,
-                "contact_phone": bank.contact_phone if bank else None,
+                "contact_phone": bank.user.phone if bank and bank.user else None,
             }
             stock_summary[bt]["total"] += s.units_available
             stock_summary[bt]["banks"].append(bank_info)

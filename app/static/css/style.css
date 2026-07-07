@@ -293,6 +293,52 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 18px 20px; box-shadow: var(--shadow);
 }
+.reward-summary-card,
+.reward-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; min-height: 100%;
+}
+.reward-progress {
+  width: 100%; background: var(--border); border-radius: 999px; height: 12px; overflow: hidden;
+}
+.reward-progress-fill {
+  height: 100%; border-radius: 999px;
+}
+.reward-summary-complete {
+  font-weight: 600; color: var(--green);
+}
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.badge-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; background: var(--white);
+}
+.badge-card-compact {
+  padding: 12px;
+}
+.badge-card-empty {
+  min-height: 120px; justify-content: center; text-align: center;
+}
+.badge-icon {
+  display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 12px;
+  background: rgba(15, 118, 110, 0.08); font-size: 1rem;
+}
+.certificate-pill {
+  display: inline-flex; gap: 8px; align-items: center;
+  border: 1px solid; border-radius: 999px; padding: 8px 12px;
+  background: var(--white); font-size: .82rem;
+}
+.certificate-icon {
+  display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center;
+}
+.list-group-item {
+  background: var(--white);
+}
 .stat-label {
   font-size: .76rem; color: var(--text-muted); font-weight: 600;
   text-transform: uppercase; letter-spacing: .04em;
