@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Request Blood from {{ bank.name }} — BloodLink{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+  <div>
+    <h1 class="page-title">Request Blood from {{ bank.name }}</h1>
+    <p class="page-subtitle">Create a targeted request for this blood bank and notify them directly.</p>
+  </div>
+  <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card-container mb-4">
+  <div class="d-flex align-items-center gap-3 mb-3">
+    <div>
+      <div class="fw-semibold">{{ bank.name }}</div>
+      <div class="tiny text-muted">{{ bank.county }} County{% if bank.subcounty %}, {{ bank.subcounty }}{% endif %}</div>
+      <div class="tiny text-muted">Contact: {{ bank.contact_phone or 'Not available' }}</div>
+    </div>
+  </div>
+
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group mb-3">
+      <label class="form-label" for="blood_type">Blood Type</label>
+      <select id="blood_type" name="blood_type" class="form-select" required>
+        <option value="" disabled {% if not blood_type %}selected{% endif %}>Choose blood type</option>
+        {% for option in ['O-','O+','A-','A+','B-','B+','AB-','AB+'] %}
+        <option value="{{ option }}" {% if blood_type == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group mb-3">
+      <label class="form-label" for="units_needed">Units Needed</label>
+      <input id="units_needed" type="number" name="units_needed" class="form-control" min="1" value="1" required>
+    </div>
+    <div class="form-group mb-3">
+      <label class="form-label" for="urgency_level">Urgency Level</label>
+      <select id="urgency_level" name="urgency_level" class="form-select">
+        <option value="urgent">Urgent</option>
+        <option value="normal">Normal</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Send Targeted Request</button>
+  </form>
+</div>
+
+{% endblock %}

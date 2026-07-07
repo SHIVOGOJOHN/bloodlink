@@ -107,6 +107,29 @@ def notify_new_blood_request(blood_request: BloodRequest) -> tuple[int, int]:
     return donors_sent, banks_sent
 
 
+def notify_bank_of_request(blood_request: BloodRequest, bank: BloodBank) -> bool:
+    if not bank or not getattr(bank, "user", None):
+        return False
+    email = getattr(bank.user, "email", None)
+    if not email:
+        return False
+
+    hospital = blood_request.hospital
+    hospital_url = url_for("public_hospital_profile", hospital_id=hospital.id, _external=True) if hospital else ""
+    subject = f"Targeted blood request: {blood_request.units_needed} × {blood_request.blood_type} for {hospital.name if hospital else 'your region'}"
+    body = (
+        f"A hospital has requested blood directly from your blood bank:\n\n"
+        f"Hospital: {hospital.name if hospital else 'Unknown'}\n"
+        f"Location: {hospital.county or 'Unknown county'}\n"
+        f"Blood type: {blood_request.blood_type}\n"
+        f"Units needed: {blood_request.units_needed}\n"
+        f"Urgency: {blood_request.urgency_level}\n"
+        f"Hospital profile: {hospital_url}\n\n"
+        "Please review the request and fulfill it if you can supply the requested blood."
+    )
+    return _send_email_safe(subject, email, body)
+
+
 def notify_donor_donation_confirmed(
     donation: DonationRecord,
     points_awarded: int = 0,

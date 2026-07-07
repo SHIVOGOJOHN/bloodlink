@@ -537,6 +537,25 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
 .inventory-bank-list-title {
   font-weight: 600;
 }
+.inventory-bank-segment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.inventory-remote-more summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--primary);
+}
+.inventory-remote-more summary::-webkit-details-marker {
+  display: none;
+}
+.inventory-remote-more summary:before {
+  content: '\25BE';
+  display: inline-block;
+  margin-right: 0.35rem;
+  transform: translateY(0.1em);
+}
 .inventory-bank-item {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -595,10 +614,17 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   position: relative;
   flex: 1 1 auto;
   min-height: 260px;
+  overflow: hidden;
 }
 .forecast-chart-canvas-wrap canvas {
   width: 100% !important;
   height: 100% !important;
+  display: block;
+}
+@media (max-width: 992px) {
+  .forecast-chart-canvas-wrap {
+    min-height: 300px;
+  }
 }
 @media (max-width: 768px) {
   .page-header .d-flex {

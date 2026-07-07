@@ -62,7 +62,6 @@
     <div class="inventory-grid">
       {% for blood_type in ['O-','O+','A-','A+','B-','B+','AB-','AB+'] %}
         {% set info = stock_summary.get(blood_type) %}
-        {% set local_units = local_stock | selectattr('blood_type','equalto',blood_type) | map(attribute='units_available') | sum %}
         <div class="inventory-card">
           <div class="d-flex align-items-center justify-content-between mb-1">
             <span class="badge bg-danger" style="font-size:0.82rem;">{{ blood_type }}</span>
@@ -76,34 +75,121 @@
           </div>
           <div class="fw-semibold" style="font-size:1.1rem;">{{ info.total if info else 0 }}</div>
           <div class="tiny text-muted">units total</div>
-          {% if local_units > 0 %}
-          <div class="tiny mt-1" style="color:var(--green);">{{ local_units }} local</div>
+          {% if info and info.local_units > 0 %}
+          <div class="tiny mt-1" style="color:var(--green);">{{ info.local_units }} local unit{{ '' if info.local_units == 1 else 's' }}</div>
+          {% endif %}
+          {% if info and info.remote_units > 0 %}
+          <div class="tiny mt-1" style="color:var(--muted);">{{ info.remote_units }} remote unit{{ '' if info.remote_units == 1 else 's' }} available</div>
           {% endif %}
 
           {% if info and info.banks %}
           <div class="inventory-bank-list">
-            <div class="tiny text-muted inventory-bank-list-title">Blood banks with this stock</div>
-
-            {% for bank in info.banks %}
-            <div class="inventory-bank-item{% if bank.county == hospital.county %} inventory-bank-item-local{% endif %}">
-              <div class="d-flex justify-content-between align-items-start gap-2">
-                <div>
-                  <div class="fw-semibold inventory-bank-name">
-                    <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
-                      {{ bank.name }}
-                    </a>
-                  </div>
-                  <div class="tiny text-muted">
-                    {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
-                    {% if bank.distance is not none %}
-                      · ~{{ bank.distance }} km away
-                    {% endif %}
+            <div class="inventory-bank-segment">
+              <div class="tiny text-muted inventory-bank-list-title">Local banks in {{ hospital.county }} County</div>
+              {% if info.local_banks %}
+                {% for bank in info.local_banks %}
+                <div class="inventory-bank-item inventory-bank-item-local">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <div class="fw-semibold inventory-bank-name">
+                        <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                          {{ bank.name }}
+                        </a>
+                      </div>
+                      <div class="tiny text-muted">
+                        {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                        {% if bank.distance is not none %}
+                          · ~{{ bank.distance }} km away
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                      <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                        {% if bank.contact_phone %}
+                          <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                        {% endif %}
+                        <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <span class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</span>
-              </div>
+                {% endfor %}
+              {% else %}
+                <div class="tiny text-muted">No registered local bank is currently reporting {{ blood_type }} stock.</div>
+              {% endif %}
             </div>
-            {% endfor %}
+
+            <div class="inventory-bank-segment mt-3">
+              <div class="tiny text-muted inventory-bank-list-title">Other banks</div>
+              {% if info.remote_banks %}
+                {% for bank in info.remote_banks[:2] %}
+                <div class="inventory-bank-item">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <div class="fw-semibold inventory-bank-name">
+                        <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                          {{ bank.name }}
+                        </a>
+                      </div>
+                      <div class="tiny text-muted">
+                        {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                        {% if bank.distance is not none %}
+                          · ~{{ bank.distance }} km away
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                      <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                        {% if bank.contact_phone %}
+                          <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                        {% endif %}
+                        <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+                {% if info.remote_banks|length > 2 %}
+                <details class="inventory-remote-more mt-2">
+                  <summary>Show {{ info.remote_banks|length - 2 }} more remote bank{{ '' if info.remote_banks|length - 2 == 1 else 's' }}</summary>
+                  <div class="mt-2">
+                    {% for bank in info.remote_banks[2:] %}
+                    <div class="inventory-bank-item">
+                      <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div class="fw-semibold inventory-bank-name">
+                            <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                              {{ bank.name }}
+                            </a>
+                          </div>
+                          <div class="tiny text-muted">
+                            {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                            {% if bank.distance is not none %}
+                              · ~{{ bank.distance }} km away
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="text-end">
+                          <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                          <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                            {% if bank.contact_phone %}
+                              <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                            {% endif %}
+                            <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </details>
+                {% endif %}
+              {% else %}
+                <div class="tiny text-muted">No remote bank is currently reporting {{ blood_type }} stock.</div>
+              {% endif %}
+            </div>
           </div>
           {% else %}
           <div class="tiny text-muted mt-2">No blood bank is currently reporting {{ blood_type }} stock.</div>
@@ -513,11 +599,28 @@
           options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              layout: { padding: { bottom: 8 } },
+              plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false },
+              },
+              layout: { padding: { top: 8, right: 10, bottom: 24, left: 10 } },
               scales: {
-                x: { ticks: { maxRotation: 0, minRotation: 0, autoSkip: false }, grid: { display: false } },
-                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: {
+                  ticks: {
+                    maxRotation: 40,
+                    minRotation: 40,
+                    autoSkip: true,
+                    maxTicksLimit: 8,
+                    align: 'end',
+                    padding: 6,
+                  },
+                  grid: { display: false },
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: { precision: 0, padding: 4 },
+                  grid: { drawBorder: false },
+                },
               },
             },
         });

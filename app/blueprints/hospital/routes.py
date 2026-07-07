@@ -10,6 +10,7 @@ from app.utils.auth import role_required
 from app.utils.loyalty import calculate_reward_for_donation
 from app.utils.notifications import (
     notify_new_blood_request,
+    notify_bank_of_request,
     notify_donor_donation_confirmed,
     notify_request_receipt_confirmed,
 )
@@ -101,23 +102,32 @@ def dashboard():
         requests_list = BloodRequest.query.filter_by(hospital_id=hospital.id).order_by(BloodRequest.created_at.desc()).all()
         # Aggregate all blood bank stock across all banks, keyed by blood type
         all_stock = BloodBankStock.query.all()
-        # Build a dict: blood_type -> {total_units, banks: [{name, county, units}]}
+        # Build a dict: blood_type -> {total, banks, local_banks, remote_banks, local_units, remote_units}
         stock_summary: dict = {}
         for s in all_stock:
             bt = s.blood_type
             bank = s.blood_bank
             if bt not in stock_summary:
-                stock_summary[bt] = {"total": 0, "banks": []}
+                stock_summary[bt] = {
+                    "total": 0,
+                    "banks": [],
+                    "local_banks": [],
+                    "remote_banks": [],
+                    "local_units": 0,
+                    "remote_units": 0,
+                }
             distance_km = _estimate_blood_bank_distance(hospital, bank) if bank else None
-            stock_summary[bt]["total"] += s.units_available
-            stock_summary[bt]["banks"].append({
+            bank_info = {
                 "id": bank.id if bank else None,
                 "name": bank.name if bank else "Unknown",
                 "county": bank.county if bank else "",
                 "units": s.units_available,
                 "expiry": s.expiry_date,
                 "distance": distance_km,
-            })
+                "contact_phone": bank.contact_phone if bank else None,
+            }
+            stock_summary[bt]["total"] += s.units_available
+            stock_summary[bt]["banks"].append(bank_info)
 
         for blood_type_info in stock_summary.values():
             blood_type_info["banks"].sort(
@@ -127,6 +137,10 @@ def dashboard():
                     bank_info["name"],
                 )
             )
+            blood_type_info["local_banks"] = [b for b in blood_type_info["banks"] if b["county"] == hospital.county]
+            blood_type_info["remote_banks"] = [b for b in blood_type_info["banks"] if b["county"] != hospital.county]
+            blood_type_info["local_units"] = sum(b["units"] for b in blood_type_info["local_banks"])
+            blood_type_info["remote_units"] = sum(b["units"] for b in blood_type_info["remote_banks"])
 
         # Also keep a simple list for county-local stock (same county as hospital)
         local_stock = BloodBankStock.query.join(BloodBank).filter(
@@ -165,6 +179,56 @@ def dashboard():
         latest_request=latest_open_request,
         forecast_panel=forecast_panel,
     )
+
+
+@hospital_bp.route("/bank-request/<int:bank_id>", methods=["GET", "POST"])
+@role_required("hospital_staff")
+def bank_request(bank_id):
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+
+    bank = db.session.get(BloodBank, bank_id)
+    if not bank:
+        flash("Blood bank not found.", "danger")
+        return redirect(url_for("hospital.dashboard"))
+
+    if request.method == "POST":
+        blood_type = request.form.get("blood_type", "").strip().upper()
+        try:
+            units_needed = int(request.form.get("units_needed", 0) or 0)
+        except ValueError:
+            units_needed = 0
+        urgency_level = request.form.get("urgency_level", "urgent")
+
+        if not blood_type or units_needed <= 0:
+            flash("Please choose a valid blood type and units needed.", "warning")
+            return render_template("hospital/bank_request.html", hospital=hospital, bank=bank, blood_type=blood_type)
+
+        try:
+            request_record = BloodRequest(
+                hospital_id=hospital.id,
+                blood_type=blood_type,
+                units_needed=units_needed,
+                urgency_level=urgency_level,
+                status="open",
+            )
+            db.session.add(request_record)
+            db.session.commit()
+            invalidate_forecast_cache()
+            bank_notified = notify_bank_of_request(request_record, bank)
+            flash(
+                f"Request created for {bank.name}. " +
+                ("The bank has been notified." if bank_notified else "The bank could not be notified by email; please contact them directly."),
+                "success" if bank_notified else "warning",
+            )
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            flash(f"Unable to create a targeted request right now: {exc}", "warning")
+        return redirect(url_for("hospital.dashboard"))
+
+    blood_type = request.args.get("blood_type", "").strip().upper()
+    return render_template("hospital/bank_request.html", hospital=hospital, bank=bank, blood_type=blood_type)
 
 
 @hospital_bp.route("/forecast/run", methods=["POST"])
