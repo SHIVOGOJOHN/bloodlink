@@ -22,9 +22,40 @@ from app.utils.forecast import (
     upload_training_csv_stream,
 )
 from app.utils.github_cdn import upload_training_csv
-from app.utils.matching import rank_donors_for_request
+from app.utils.matching import calculate_haversine_distance, get_distance, rank_donors_for_request
 
 hospital_bp = Blueprint("hospital", __name__, url_prefix="/hospital")
+
+
+def _estimate_blood_bank_distance(hospital: Hospital, bank: BloodBank) -> float | None:
+    """Estimate proximity in kilometers from a hospital to a blood bank."""
+    if (
+        hospital.latitude is not None and hospital.longitude is not None and
+        bank.latitude is not None and bank.longitude is not None
+    ):
+        return calculate_haversine_distance(
+            hospital.latitude,
+            hospital.longitude,
+            bank.latitude,
+            bank.longitude,
+        )
+
+    if hospital.ward and bank.ward and hospital.ward.strip().lower() == bank.ward.strip().lower():
+        return 2.0
+
+    if (
+        hospital.subcounty and bank.subcounty and
+        hospital.subcounty.strip().lower() == bank.subcounty.strip().lower()
+    ):
+        return 4.0
+
+    if hospital.county and bank.county and hospital.county.strip().lower() == bank.county.strip().lower():
+        return 10.0
+
+    if hospital.county and bank.county:
+        return float(get_distance(hospital.county, bank.county))
+
+    return None
 
 
 @hospital_bp.route("/", methods=["GET", "POST"])
@@ -77,6 +108,7 @@ def dashboard():
             bank = s.blood_bank
             if bt not in stock_summary:
                 stock_summary[bt] = {"total": 0, "banks": []}
+            distance_km = _estimate_blood_bank_distance(hospital, bank) if bank else None
             stock_summary[bt]["total"] += s.units_available
             stock_summary[bt]["banks"].append({
                 "id": bank.id if bank else None,
@@ -84,7 +116,18 @@ def dashboard():
                 "county": bank.county if bank else "",
                 "units": s.units_available,
                 "expiry": s.expiry_date,
+                "distance": distance_km,
             })
+
+        for blood_type_info in stock_summary.values():
+            blood_type_info["banks"].sort(
+                key=lambda bank_info: (
+                    bank_info["distance"] if bank_info["distance"] is not None else float("inf"),
+                    -bank_info["units"],
+                    bank_info["name"],
+                )
+            )
+
         # Also keep a simple list for county-local stock (same county as hospital)
         local_stock = BloodBankStock.query.join(BloodBank).filter(
             BloodBank.county == hospital.county
