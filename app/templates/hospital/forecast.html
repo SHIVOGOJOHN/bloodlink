@@ -1,78 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Operational Demand Forecast — BloodLink{% endblock %}
-
-{% block hospital_sidebar %}
-  {% include 'hospital/sidebar.html' %}
-{% endblock %}
-
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
   <div>
     <h1 class="page-title">Operational Demand Forecast</h1>
-    <p class="page-subtitle">Review the forecast summary, refresh the model, and upload training data from this page.</p>
+    <p class="page-subtitle">Predicted demand and key drivers for your hospital.</p>
   </div>
   <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
 </div>
 
-<div class="card-container mb-4">
-  <div class="forecast-actions-row">
-    <div class="forecast-actions-text">
-      <div class="fw-semibold">Forecast controls</div>
-      <div class="tiny text-muted">Upload a CSV with your own history, or use the example schema below. The pipeline accepts extra columns and maps the most common aliases automatically.</div>
-    </div>
-    <div class="forecast-actions-controls">
-      <div class="d-flex flex-wrap gap-2">
-        <form method="post" action="{{ url_for('hospital.run_forecast') }}" class="d-inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-primary btn-sm forecast-action-button" type="submit">
-            <span class="button-spinner" aria-hidden="true"></span>
-            <span class="button-text">Refresh forecast</span>
-          </button>
-        </form>
-        <a href="{{ url_for('static', filename='csv/forecast_training_schema.csv') }}" class="btn btn-outline-secondary btn-sm" download>Download example CSV</a>
-      </div>
-      <form method="post" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data" class="w-100">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-file-row">
-          <label class="btn btn-outline-secondary btn-sm mb-0" for="training_csv">Choose CSV file</label>
-          <input id="training_csv" type="file" name="training_csv" accept=".csv" class="d-none" required>
-          <span class="chosen-file tiny text-muted">Expected columns: hospital_id, county, blood_type, urgency_level, units_needed, target</span>
-        </div>
-        <button class="btn btn-outline-secondary btn-sm mt-2" type="submit">Upload training data</button>
-      </form>
-    </div>
-  </div>
-
+<div class="card-container">
   {% if forecast_panel %}
-    <div class="fw-semibold mb-2">Forecast summary</div>
+    <div class="fw-semibold mb-2">Summary</div>
     <div class="tiny text-muted mb-3">{{ forecast_panel.forecast_explanation.summary }}</div>
     <div class="row g-3">
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-label">Predicted demand</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.total_units }} units</div>
-          <div class="tiny text-muted">Estimated over the next 14 days.</div>
+          <div class="stat-label">Total units</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.total_units }}</div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-label">Average daily demand</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.average_daily_units }} units/day</div>
-          <div class="tiny text-muted">Based on recent hospital requests.</div>
+          <div class="stat-label">Avg/day</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.average_daily_units }}</div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-label">Peak demand</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.peak_units }} units</div>
-          <div class="tiny text-muted">Highest day projection.</div>
+          <div class="stat-label">Peak</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.peak_units }}</div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-label">Most requested type</div>
+          <div class="stat-label">Top blood type</div>
           <div class="stat-value">{{ forecast_panel.forecast_summary.top_blood_type }}</div>
-          <div class="tiny text-muted">Priority blood group to stock.</div>
         </div>
       </div>
     </div>
@@ -80,4 +43,5 @@
     <div class="tiny text-muted">No forecast data available.</div>
   {% endif %}
 </div>
+
 {% endblock %}

@@ -1,9 +1,0 @@
-<aside class="d-none d-lg-block role-sidebar" id="hospital-sidebar">
-  <ul class="sidebar-links">
-    <li><a class="{{ 'active' if request.endpoint == 'hospital.dashboard' else '' }}" href="{{ url_for('hospital.dashboard') }}">Dashboard</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'hospital.create_request_page' else '' }}" href="{{ url_for('hospital.create_request_page') }}">Create request</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'hospital.inventory' else '' }}" href="{{ url_for('hospital.inventory') }}">Inventory</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'hospital.forecast' else '' }}" href="{{ url_for('hospital.forecast') }}">Forecast</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'hospital.profile' else '' }}" href="{{ url_for('hospital.profile') }}">Profile</a></li>
-  </ul>
-</aside>

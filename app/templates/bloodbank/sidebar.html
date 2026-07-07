@@ -1,8 +1,0 @@
-<aside class="d-none d-lg-block role-sidebar" id="bloodbank-sidebar">
-  <ul class="sidebar-links">
-    <li><a class="{{ 'active' if request.endpoint == 'bloodbank.dashboard' else '' }}" href="{{ url_for('bloodbank.dashboard') }}">Inventory</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'bloodbank.dashboard' else '' }}" href="{{ url_for('bloodbank.dashboard') }}#requests">Incoming requests</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'bloodbank.profile' else '' }}" href="{{ url_for('bloodbank.profile') }}">Profile</a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'bloodbank.profile_setup' else '' }}" href="{{ url_for('bloodbank.profile_setup') }}">Settings</a></li>
-  </ul>
-</aside>

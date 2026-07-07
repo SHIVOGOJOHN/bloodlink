@@ -2,8 +2,8 @@
 
 {% block title %}Hospital Dashboard — BloodLink{% endblock %}
 
-{% block hospital_sidebar %}
-  {% include 'hospital/sidebar.html' %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -12,6 +12,7 @@
       <h1 class="page-title">Hospital Dashboard</h1>
       <p class="page-subtitle">Check blood bank stock, create requests, coordinate with matched donors, and view an operational demand forecast.</p>
     </div>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -37,34 +38,249 @@
         <div class="fw-semibold" style="font-size:1.05rem;">{{ hospital.name }}</div>
         <div class="tiny text-muted">{{ hospital.county }} County &nbsp;·&nbsp; {{ hospital.contact_phone or 'No phone' }}</div>
       </div>
-      <a href="{{ url_for('hospital.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">Profile</a>
+      <a href="{{ url_for('hospital.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">View Profile</a>
     </div>
   </div>
   {% endif %}
 
-  <div class="page-notice-card mb-4">
-    <div class="d-flex flex-column gap-3 gap-sm-0 justify-content-between align-items-start align-items-sm-center">
+  <div class="card-container mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
       <div>
-        <div class="fw-semibold" style="font-size:1rem;">Open blood requests</div>
-        <div class="tiny text-muted mt-1">Track all requests from this hospital and review matched donor recommendations for your most recent open request.</div>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('hospital.create_request_page') }}" class="btn btn-primary btn-sm">Create Request</a>
-        <a href="{{ url_for('hospital.inventory') }}" class="btn btn-outline-secondary btn-sm">View Inventory</a>
-        <a href="{{ url_for('hospital.forecast') }}" class="btn btn-outline-secondary btn-sm">View Forecast</a>
+        <div class="fw-semibold" style="font-size:1rem;">National Blood Bank Inventory</div>
+        <div class="tiny text-muted mt-1">
+          Check available stock across all registered blood banks before submitting a request.
+          {% if local_stock %}
+            <span class="fw-semibold" style="color:var(--green);">Local stock ({{ hospital.county }} County) is highlighted.</span>
+          {% else %}
+            <span style="color:var(--warning);">No blood bank registered in your county yet.</span>
+          {% endif %}
+        </div>
       </div>
     </div>
+
+    {% if stock_summary %}
+    <div class="inventory-grid">
+      {% for blood_type in ['O-','O+','A-','A+','B-','B+','AB-','AB+'] %}
+        {% set info = stock_summary.get(blood_type) %}
+        <div class="inventory-card">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="badge bg-danger" style="font-size:0.82rem;">{{ blood_type }}</span>
+            {% if info and info.total > 10 %}
+              <span class="tiny" style="color:var(--green);">&#x25CF; OK</span>
+            {% elif info and info.total > 0 %}
+              <span class="tiny" style="color:var(--warning);">&#x25CF; Low</span>
+            {% else %}
+              <span class="tiny" style="color:var(--danger);">&#x25CF; None</span>
+            {% endif %}
+          </div>
+          <div class="fw-semibold" style="font-size:1.1rem;">{{ info.total if info else 0 }}</div>
+          <div class="tiny text-muted">units total</div>
+          {% if info and info.local_units > 0 %}
+          <div class="tiny mt-1" style="color:var(--green);">{{ info.local_units }} local unit{{ '' if info.local_units == 1 else 's' }}</div>
+          {% endif %}
+          {% if info and info.remote_units > 0 %}
+          <div class="tiny mt-1" style="color:var(--muted);">{{ info.remote_units }} remote unit{{ '' if info.remote_units == 1 else 's' }} available</div>
+          {% endif %}
+
+          {% if info and info.banks %}
+          <div class="inventory-bank-list">
+            <div class="inventory-bank-segment inventory-bank-segment-local">
+              <div class="tiny text-muted inventory-bank-list-title">Local banks in {{ hospital.county }} County</div>
+              {% if info.local_banks %}
+                {% for bank in info.local_banks[:3] %}
+                <div class="inventory-bank-item inventory-bank-item-local">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <div class="fw-semibold inventory-bank-name">
+                        <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                          {{ bank.name }}
+                        </a>
+                      </div>
+                      <div class="tiny text-muted">
+                        {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                        {% if bank.distance is not none %}
+                          · ~{{ bank.distance }} km away
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                      <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                        {% if bank.contact_phone %}
+                          <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                        {% endif %}
+                        <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+                {% if info.local_banks|length > 3 %}
+                <details class="inventory-local-more mt-2">
+                  <summary>Show {{ info.local_banks|length - 3 }} more local bank{{ '' if info.local_banks|length - 3 == 1 else 's' }}</summary>
+                  <div class="mt-2">
+                    {% for bank in info.local_banks[3:] %}
+                    <div class="inventory-bank-item inventory-bank-item-local">
+                      <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div class="fw-semibold inventory-bank-name">
+                            <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                              {{ bank.name }}
+                            </a>
+                          </div>
+                          <div class="tiny text-muted">
+                            {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                            {% if bank.distance is not none %}
+                              · ~{{ bank.distance }} km away
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="text-end">
+                          <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                          <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                            {% if bank.contact_phone %}
+                              <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                            {% endif %}
+                            <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </details>
+                {% endif %}
+              {% else %}
+                <div class="tiny text-muted">No registered local bank is currently reporting {{ blood_type }} stock.</div>
+              {% endif %}
+            </div>
+
+            <div class="inventory-bank-segment mt-3">
+              <div class="tiny text-muted inventory-bank-list-title">Other banks</div>
+              {% if info.remote_banks %}
+                {% for bank in info.remote_banks[:2] %}
+                <div class="inventory-bank-item">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <div class="fw-semibold inventory-bank-name">
+                        <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                          {{ bank.name }}
+                        </a>
+                      </div>
+                      <div class="tiny text-muted">
+                        {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                        {% if bank.distance is not none %}
+                          · ~{{ bank.distance }} km away
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                      <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                        {% if bank.contact_phone %}
+                          <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                        {% endif %}
+                        <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+                {% if info.remote_banks|length > 2 %}
+                <details class="inventory-remote-more mt-2">
+                  <summary>Show {{ info.remote_banks|length - 2 }} more remote bank{{ '' if info.remote_banks|length - 2 == 1 else 's' }}</summary>
+                  <div class="mt-2">
+                    {% for bank in info.remote_banks[2:] %}
+                    <div class="inventory-bank-item">
+                      <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div class="fw-semibold inventory-bank-name">
+                            <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                              {{ bank.name }}
+                            </a>
+                          </div>
+                          <div class="tiny text-muted">
+                            {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                            {% if bank.distance is not none %}
+                              · ~{{ bank.distance }} km away
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="text-end">
+                          <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                          <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                            {% if bank.contact_phone %}
+                              <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                            {% endif %}
+                            <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </details>
+                {% endif %}
+              {% else %}
+                <div class="tiny text-muted">No remote bank is currently reporting {{ blood_type }} stock.</div>
+              {% endif %}
+            </div>
+          </div>
+          {% else %}
+          <div class="tiny text-muted mt-2">No blood bank is currently reporting {{ blood_type }} stock.</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted tiny">No blood bank stock data available nationally. Blood banks need to log their inventory.</div>
+    {% endif %}
   </div>
 
   <div class="row g-4">
-    <div class="col-xl-6">
-      <div class="card-container h-100">
+    <div class="col-md-5">
+      <div class="card-container h-100" style="margin-bottom:0;">
+        <div class="fw-semibold mb-1" style="font-size:1rem;">Create Blood Request</div>
+        <div class="tiny text-muted mb-4">
+          Submit a request when stock is insufficient. Blood banks will see and fulfill it from their inventory.
+          If no stock is available, matched donors will be shown below.
+        </div>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group">
+            <label class="form-label" for="blood_type">Blood Type Needed</label>
+            <select id="blood_type" name="blood_type" class="form-select" required>
+              <option value="" disabled selected>Select blood type</option>
+              <option>O-</option><option>O+</option>
+              <option>A-</option><option>A+</option>
+              <option>B-</option><option>B+</option>
+              <option>AB-</option><option>AB+</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="units_needed">Units Needed</label>
+            <input id="units_needed" type="number" name="units_needed" class="form-control" min="1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="urgency_level">Urgency Level</label>
+            <select id="urgency_level" name="urgency_level" class="form-select">
+              <option value="urgent">Urgent</option>
+              <option value="normal">Normal</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-2">Submit Request</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-md-7">
+      <div class="card-container">
         <div class="fw-semibold mb-3" style="font-size:1rem;">Your Recent Requests</div>
         {% if requests %}
         <ul class="list-unstyled mb-0">
           {% for req in requests %}
-          <li class="request-list-item">
-            <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+          <li style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <div class="d-flex justify-content-between align-items-center">
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="badge bg-danger">{{ req.blood_type }}</span>
                 <span class="fw-semibold">{{ req.units_needed }} units</span>
@@ -74,21 +290,25 @@
                   <span class="badge bg-secondary">Normal</span>
                 {% endif %}
               </div>
-              <div class="d-flex align-items-center gap-2 flex-wrap text-end">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="tiny text-muted">{{ req.created_at.strftime('%Y-%m-%d') }}</span>
                 {% if req.status == 'open' %}
                   <span class="badge bg-warning text-dark">Open</span>
                 {% elif req.status == 'dispatched' %}
-                  <span class="badge bg-info text-dark">Dispatched</span>
+                  <span class="badge bg-info text-dark" title="Dispatched by {{ req.fulfilled_by_bank.name if req.fulfilled_by_bank else 'Blood Bank' }} - In Transit">Dispatched</span>
+                  <form method="POST" action="{{ url_for('hospital.confirm_receipt', request_id=req.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size:0.75rem;">Confirm Receipt</button>
+                  </form>
                 {% else %}
-                  <span class="badge bg-success">Received</span>
+                  <span class="badge bg-success" title="Received & Completed by {{ req.fulfilled_by_bank.name if req.fulfilled_by_bank else 'Blood Bank' }}">Received</span>
                 {% endif %}
               </div>
             </div>
             {% if req.fulfilled_by_bank %}
-            <div class="tiny text-muted mt-2">
-              {{ 'Dispatched by' if req.status == 'dispatched' else 'Fulfilled by' }}
-              <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=req.fulfilled_by_bank.id) }}" class="fw-semibold text-decoration-none">{{ req.fulfilled_by_bank.name }}</a>
+            <div class="tiny text-muted mt-1" style="font-size:0.75rem;">
+              {{ "Dispatched by" if req.status == "dispatched" else "Fulfilled by" }}:
+              <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=req.fulfilled_by_bank.id) }}" class="fw-semibold text-decoration-none" style="color:var(--primary);">{{ req.fulfilled_by_bank.name }}</a>
               ({{ req.fulfilled_by_bank.county }} County)
             </div>
             {% endif %}
@@ -96,19 +316,24 @@
           {% endfor %}
         </ul>
         {% else %}
-        <div class="text-muted tiny">No requests submitted yet. Create one to begin matching donors and sending bank notifications.</div>
+        <div class="text-muted tiny">No requests submitted yet.</div>
         {% endif %}
       </div>
-    </div>
 
-    <div class="col-xl-6">
-      <div class="card-container h-100">
-        <div class="fw-semibold mb-3" style="font-size:1rem;">Matched Donors</div>
+      <div class="card-container" style="margin-bottom:0;">
+        <div class="fw-semibold mb-1" style="font-size:1rem;">
+          Matched Donors
+          {% if latest_request %}
+            - {{ latest_request.blood_type }}, {{ latest_request.units_needed }} unit(s)
+          {% endif %}
+        </div>
         <div class="tiny text-muted mb-3">
           {% if latest_request %}
-          These donors are matched to your latest open request ({{ latest_request.blood_type }}, {{ latest_request.units_needed }} units).
+            These donors are eligible and compatible with your latest open request.
+            Confirming a donation also increments the nearest blood bank's inventory.
+            <br>Score: Compatibility (60 pts) + Eligibility (30 pts) + Proximity (10 pts).
           {% else %}
-          No open request yet. Create a request to see donor recommendations.
+            No open request. Submit a request above to see matched donors.
           {% endif %}
         </div>
 
@@ -116,57 +341,326 @@
         <div class="match-list-scroll">
           {% for match in matching_results %}
           <div class="match-item">
-            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div class="d-flex justify-content-between align-items-start gap-3">
               <div class="d-flex gap-3 align-items-start flex-grow-1">
                 {% if match.donor.profile_pic_url %}
-                  <img src="{{ match.donor.profile_pic_url }}" alt="{{ match.donor.name }}" class="match-avatar">
+                  <img src="{{ match.donor.profile_pic_url }}" alt="{{ match.donor.name }}"
+                    style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;margin-top:2px;">
                 {% else %}
-                  <div class="match-avatar match-avatar-fallback">{{ (match.donor.name or '?')[0].upper() }}</div>
+                  <div style="width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:var(--red);flex-shrink:0;margin-top:2px;">
+                    {{ (match.donor.name or '?')[0].upper() }}
+                  </div>
                 {% endif %}
+
                 <div class="flex-grow-1">
                   <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}" class="fw-semibold text-decoration-none">{{ match.donor.name }}</a>
+                    <a href="{{ url_for('public_donor_profile', donor_id=match.donor.id) }}" class="fw-semibold text-decoration-none" style="color:var(--primary);">{{ match.donor.name }}</a>
                     <span class="badge bg-primary">{{ match.score }}/100</span>
                     {% if match.donor.blood_type == 'O-' %}
                     <span class="badge bg-danger">Universal Donor</span>
                     {% endif %}
                   </div>
-                  <div class="tiny text-muted mb-2">{{ match.donor.blood_type }} · {{ match.donor.county }} · ~{{ match.distance_km }} km away</div>
-                  <div class="d-flex gap-2 flex-wrap mb-2">
-                    <span class="badge bg-secondary">Compatibility: {{ match.compat_score }}/60</span>
-                    <span class="badge bg-secondary">Eligibility: {{ match.elig_score }}/30</span>
-                    <span class="badge bg-secondary">Proximity: {{ match.prox_score }}/10</span>
+                  <div class="tiny text-muted mb-2">
+                    {{ match.donor.blood_type }} &nbsp;•&nbsp; {{ match.donor.county }}
+                    &nbsp;•&nbsp; ~{{ match.distance_km }} km away
                   </div>
-                  {% if match.reasons %}
-                  <ul class="mb-2 ps-3 match-reasons">
+                  <div class="d-flex gap-2 flex-wrap mb-2">
+                    <span class="badge bg-secondary" title="Blood type compatibility">Compatibility: {{ match.compat_score }}/60</span>
+                    <span class="badge bg-secondary" title="90-day eligibility">Eligibility: {{ match.elig_score }}/30</span>
+                    <span class="badge bg-secondary" title="County proximity">Proximity: {{ match.prox_score }}/10</span>
+                  </div>
+                  <ul class="mb-2 ps-3" style="font-size:0.78rem;color:var(--text-muted);">
                     {% for reason in match.reasons %}<li>{{ reason }}</li>{% endfor %}
                   </ul>
-                  {% endif %}
                   {% if match.explanation %}
                   <div class="tiny text-muted fst-italic">{{ match.explanation }}</div>
                   {% endif %}
                 </div>
               </div>
-              {% if latest_request %}
-              <form method="POST" action="{{ url_for('hospital.confirm_donation') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="donor_id" value="{{ match.donor.id }}">
-                <input type="hidden" name="blood_request_id" value="{{ latest_request.id }}">
-                <button type="submit" class="btn btn-sm btn-outline-success">Confirm Donation</button>
-              </form>
-              {% endif %}
+
+              <div class="flex-shrink-0">
+                {% if latest_request %}
+                <form method="POST" action="{{ url_for('hospital.confirm_donation') }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="donor_id" value="{{ match.donor.id }}">
+                  <input type="hidden" name="blood_request_id" value="{{ latest_request.id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-success">Confirm Donation</button>
+                </form>
+                {% endif %}
+              </div>
             </div>
           </div>
           {% endfor %}
         </div>
         {% elif latest_request %}
-        <div class="text-muted tiny">No eligible donors found for this request yet.</div>
+        <div class="text-muted tiny">No eligible, compatible donors found for this request in the system.</div>
         {% else %}
-        <div class="text-muted tiny">Submit a blood request to begin donor matching.</div>
+        <div class="text-muted tiny">Submit a blood request above to activate donor matching.</div>
         {% endif %}
       </div>
     </div>
   </div>
 
-{% endblock %}
+  {% if forecast_panel %}
+  <div class="card-container mt-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap forecast-actions-row">
+      <div class="forecast-actions-text">
+        <div class="fw-semibold" style="font-size:1rem;">Operational Demand Forecast</div>
+        <div class="tiny text-muted">A single trained model predicts your 14-day hospital blood demand, with automated retraining when records change. You can also refresh it manually.</div>
+      </div>
+      <div class="forecast-actions-controls">
+        <div class="tiny text-muted mb-2">Upload a hospital training CSV using the sample schema. The system automatically fills hospital metadata from your account, so you only need the feature columns required by the model. Extra columns are allowed and ignored if they are not needed.</div>
+        <div class="tiny text-muted mb-2"><a href="{{ url_for('static', filename='training_example.csv') }}" class="text-primary">Download a feature-only sample CSV file</a> to verify the format before uploading.</div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="m-0 forecast-action-form" data-loading-label="Running forecast…">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-primary forecast-action-button">
+              <span class="button-text">Run forecast now</span>
+              <span class="button-spinner" aria-hidden="true"></span>
+            </button>
+          </form>
 
+          <form method="POST" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data" class="m-0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-file-row">
+              <label class="btn btn-sm btn-outline-secondary mb-0">
+                Choose training CSV
+                <input type="file" name="training_csv" accept=".csv" required hidden onchange="this.closest('form').querySelector('.chosen-file').textContent = this.files && this.files.length ? this.files[0].name : 'No file chosen'">
+              </label>
+              <div class="tiny text-muted chosen-file" aria-live="polite">No file chosen</div>
+              <button type="submit" class="btn btn-sm btn-success">Upload CSV</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-md-3">
+        <div class="stat-card h-100">
+          <div class="stat-label">Next 14 days</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.total_units }}</div>
+          <div class="stat-sub">units predicted</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card h-100">
+          <div class="stat-label">Daily average</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.average_daily_units }}</div>
+          <div class="stat-sub">units/day</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card h-100">
+          <div class="stat-label">Peak day</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.peak_units }}</div>
+          <div class="stat-sub">units</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card h-100">
+          <div class="stat-label">Top need</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.top_blood_type }}</div>
+          <div class="stat-sub">highest demand</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tiny text-muted mt-3">Predictions are expressed in blood units required by your hospital. For example, <strong>2.74</strong> means approximately 3 blood unit bags needed, not milliliters or currency. The model focuses on recent demand and local stock patterns to keep the forecast relevant.</div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-md-4">
+        <div class="stat-card h-100">
+          <div class="stat-label">Forecast note</div>
+          <div class="stat-value" style="font-size:0.95rem; line-height:1.4;">{{ forecast_panel.forecast_explanation.summary }}</div>
+          <div class="stat-sub">operational insight</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card h-100">
+          <div class="stat-label">Primary driver</div>
+          <div class="stat-value" style="font-size:0.95rem; line-height:1.4;">{{ forecast_panel.forecast_explanation.drivers[0].feature if forecast_panel.forecast_explanation.drivers else 'Demand patterns' }}</div>
+          <div class="stat-sub">most influential factor</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card h-100">
+          <div class="stat-label">Driver direction</div>
+          <div class="stat-value" style="font-size:0.95rem; line-height:1.4;">{{ forecast_panel.forecast_explanation.drivers[0].impact if forecast_panel.forecast_explanation.drivers else 'steady' }}</div>
+          <div class="stat-sub">impact on demand</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      {% for item in forecast_panel.blood_type_summary[:4] %}
+      <div class="col-md-3">
+        <div class="stat-card h-100">
+          <div class="stat-label">{{ item.blood_type }}</div>
+          <div class="stat-value">{{ item.average_units }}</div>
+          <div class="stat-sub">avg units/day</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Driver detail lists removed for clarity; the concise operational summary above provides the necessary guidance. -->
+
+    <div class="mt-4">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="forecast-chart-panel">
+            <div class="fw-semibold mb-2">Demand forecast</div>
+            <div class="forecast-chart-canvas-wrap">
+              <canvas id="forecast-chart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="forecast-chart-panel">
+            <div class="fw-semibold mb-2">SHAP driver impact</div>
+            <div class="forecast-chart-canvas-wrap">
+              <canvas id="shap-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="forecast-data" data-source='{{ forecast_panel | tojson | safe }}' data-refresh-url="{{ url_for('api.hospital_forecast', hospital_id=(hospital.id if hospital else 0)) }}" hidden></div>
+  <script>
+    (function () {
+      const forecastDataElement = document.getElementById('forecast-data');
+      const data = forecastDataElement ? JSON.parse(forecastDataElement.dataset.source) : null;
+      const canvas = document.getElementById('forecast-chart');
+      const refreshUrl = forecastDataElement ? forecastDataElement.dataset.refreshUrl : '';
+      const forecastButtons = Array.from(document.querySelectorAll('.forecast-action-form button'));
+      if (!canvas || !data || !data.daily_totals || !data.daily_totals.length) return;
+      const labels = data.daily_totals.map((item) => item.date);
+      const values = data.daily_totals.map((item) => item.predicted_units);
+      new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Predicted units needed',
+            data: values,
+            borderColor: '#0f766e',
+            backgroundColor: 'rgba(15, 118, 110, 0.12)',
+            fill: true,
+            tension: 0.25,
+            pointRadius: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          layout: { padding: { bottom: 28 } },
+          scales: {
+            x: {
+              grid: { display: false },
+              title: { display: true, text: 'Date', color: '#475569', font: { size: 11, weight: '500' } },
+              ticks: {
+                color: '#475569',
+                maxRotation: 0,
+                minRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 6,
+                align: 'center',
+                padding: 10,
+                font: { size: 11 },
+              },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: '#475569', font: { size: 11 } },
+            },
+          },
+        },
+      });
+
+      window.BloodLinkForecastRefreshUrl = refreshUrl;
+
+      const forecastForms = document.querySelectorAll('.forecast-action-form');
+      forecastForms.forEach((form) => {
+        form.addEventListener('submit', () => {
+          const button = form.querySelector('.forecast-action-button');
+          if (!button) return;
+          button.classList.add('loading');
+          button.disabled = true;
+          // Disable interactive fields but keep hidden CSRF token (and other hidden fields) enabled so the server receives them
+          form.querySelectorAll('input, button, select, textarea').forEach((field) => {
+            const name = field.getAttribute('name');
+            const type = field.getAttribute('type');
+            if (type === 'hidden' || name === 'csrf_token') return;
+            field.setAttribute('disabled', 'disabled');
+          });
+        });
+      });
+
+      // Clean up any lingering loading states when the page loads (handles error responses)
+      window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.forecast-action-button.loading').forEach((btn) => {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+        });
+        document.querySelectorAll('.forecast-action-form [disabled]').forEach((field) => {
+          const name = field.getAttribute('name');
+          const type = field.getAttribute('type');
+          if (type === 'hidden' || name === 'csrf_token') return;
+          field.removeAttribute('disabled');
+        });
+      });
+
+      const shapCanvas = document.getElementById('shap-chart');
+      if (shapCanvas && data && data.forecast_explanation && data.forecast_explanation.shap_summary) {
+        const shapLabels = data.forecast_explanation.shap_summary.map((item) => item.feature);
+        const shapValues = data.forecast_explanation.shap_summary.map((item) => item.value);
+        new Chart(shapCanvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: shapLabels,
+            datasets: [{
+              label: 'SHAP impact',
+              data: shapValues,
+              backgroundColor: 'rgba(15, 118, 110, 0.32)',
+              borderColor: '#0f766e',
+              borderWidth: 1,
+            }],
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false },
+              },
+              layout: { padding: { top: 8, right: 10, bottom: 24, left: 10 } },
+              scales: {
+                x: {
+                  ticks: {
+                    maxRotation: 40,
+                    minRotation: 40,
+                    autoSkip: true,
+                    maxTicksLimit: 8,
+                    align: 'end',
+                    padding: 6,
+                  },
+                  grid: { display: false },
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: { precision: 0, padding: 4 },
+                  grid: { drawBorder: false },
+                },
+              },
+            },
+        });
+      }
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

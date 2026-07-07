@@ -118,13 +118,6 @@ def create_app(config_name=None):
         from app.utils.matching import COUNTY_DISTANCE
         return {"kenya_counties": sorted(COUNTY_DISTANCE.keys())}
 
-    @app.context_processor
-    def inject_template_helpers():
-        return {
-            "min": min,
-            "max": max,
-        }
-
     @app.route("/")
     def index():
         return render_template("index.html")

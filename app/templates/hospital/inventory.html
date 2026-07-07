@@ -1,27 +1,15 @@
 {% extends "base.html" %}
 {% block title %}National Blood Bank Inventory — BloodLink{% endblock %}
-
-{% block hospital_sidebar %}
-  {% include 'hospital/sidebar.html' %}
-{% endblock %}
-
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
   <div>
     <h1 class="page-title">National Blood Bank Inventory</h1>
-    <p class="page-subtitle">Review available blood stock across the network and compare nearby versus remote banks.</p>
+    <p class="page-subtitle">Overview of blood availability across registered banks.</p>
   </div>
   <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
 </div>
 
 <div class="card-container mb-4">
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-2 mb-3">
-    <div>
-      <div class="fw-semibold">Network stock overview</div>
-      <div class="tiny text-muted">This page carries the full inventory view that used to sit on the dashboard.</div>
-    </div>
-  </div>
-
   {% if stock_summary %}
     <div class="inventory-grid">
       {% for blood_type, info in stock_summary.items() %}
@@ -30,46 +18,25 @@
             <div class="fw-semibold">{{ blood_type }}</div>
             <div class="tiny text-muted">{{ info.total }} units</div>
           </div>
-
-          <div class="inventory-bank-list">
-            <div class="inventory-bank-segment inventory-bank-segment-local">
-              <div class="inventory-bank-list-title">Local banks ({{ hospital.county }})</div>
-              {% if info.local_banks %}
-                {% for bank in info.local_banks %}
-                  <div class="inventory-bank-item inventory-bank-item-local">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                      <div>
-                        <div class="inventory-bank-name">{{ bank.name }}</div>
-                        <div class="tiny text-muted">{{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}</div>
-                      </div>
-                      <div class="inventory-bank-units">{{ bank.units }} units</div>
+          {% if info.banks %}
+            <div class="inventory-bank-list">
+              {% for bank in info.banks[:6] %}
+                <div class="inventory-bank-item">
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <div class="fw-semibold">{{ bank.name }}</div>
+                      <div class="tiny text-muted">{{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}</div>
+                    </div>
+                    <div class="text-end">
+                      <div class="inventory-bank-units">{{ bank.units }}</div>
                     </div>
                   </div>
-                {% endfor %}
-              {% else %}
-                <div class="tiny text-muted">No local banks reporting this type.</div>
-              {% endif %}
+                </div>
+              {% endfor %}
             </div>
-
-            <div class="inventory-bank-segment">
-              <div class="inventory-bank-list-title">Remote banks</div>
-              {% if info.remote_banks %}
-                {% for bank in info.remote_banks[:4] %}
-                  <div class="inventory-bank-item">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                      <div>
-                        <div class="inventory-bank-name">{{ bank.name }}</div>
-                        <div class="tiny text-muted">{{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}</div>
-                      </div>
-                      <div class="inventory-bank-units">{{ bank.units }} units</div>
-                    </div>
-                  </div>
-                {% endfor %}
-              {% else %}
-                <div class="tiny text-muted">No remote banks reporting this type.</div>
-              {% endif %}
-            </div>
-          </div>
+          {% else %}
+            <div class="tiny text-muted">No banks reporting this type.</div>
+          {% endif %}
         </div>
       {% endfor %}
     </div>
@@ -77,4 +44,5 @@
     <div class="tiny text-muted">No stock data available.</div>
   {% endif %}
 </div>
+
 {% endblock %}

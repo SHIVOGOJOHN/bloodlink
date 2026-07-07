@@ -25,6 +25,11 @@ Also when the hospital posts they need blood, all eligible donors, should get an
 Also when the hospital confirms the donation is sucessful from their dashboard, the donor is supposed to get loyalty points(to prioritize em in case they also need blood in the future), updated to their dashboard,alsi there is a achievement section where badges should be displayed(implement the correct logic for this. The badges should be colored svgs/icons, no emojis) and a notification email that the donation has been successful(smtp). Also when it confirms that the blood delivered by the blood bank has been recieved, the blood bank recieves a confirmation email(smtp). So impliment this. 
 
 ---------------
+Add active-section highlighting across entire nav (not just sidebar).
+Animate the sidebar collapse for a smoother UX.
+Apply the same sidebar pattern to the hospital pages.
+
+
 yea do that, and also in my hospital dashboard, I can still see things I told you to move to other pages. Eg the National Blood Bank Inventory section and all it's content and functionality be moved to the Inventory page, the create blood request section and its contents be moved to the cretae request page, and the Operational Demand Forecast section and all its contents including the plots be moved to the forecast page. So only the Your Recent Requests and Matched Donors - A-, 50 unit(s) sections are left here on this dashboard page. so make the updates
 ---------------------
 
