@@ -169,11 +169,20 @@ body.dark-theme .role-pill { background: #3d1515; color: #fca5a5; }
 }
 
 /* Sidebar collapsed state */
+.role-sidebar { transition: width .22s ease, padding .18s ease; }
 .role-sidebar.collapsed { width:64px; }
+.role-sidebar .sidebar-links a { transition: padding .18s ease, background .12s ease, color .12s ease; }
 .role-sidebar.collapsed .sidebar-links a { padding:8px; text-align:center; }
-.role-sidebar.collapsed .sidebar-links a span.skip-collapsed { display:none; }
-.role-sidebar .sidebar-toggle { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; background:var(--surface); border:1px solid var(--border); cursor:pointer; }
+.role-sidebar .sidebar-links a span.skip-collapsed { display:inline-block; transition: opacity .18s ease, transform .18s ease; }
+.role-sidebar.collapsed .sidebar-links a span.skip-collapsed { opacity:0; transform: translateX(-6px); pointer-events: none; }
+.role-sidebar .sidebar-toggle { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; background:var(--surface); border:1px solid var(--border); cursor:pointer; transition: background .12s, border-color .12s; }
 .role-sidebar .sidebar-toggle svg { width:16px; height:16px; }
+
+/* Hospital pages: fixed sidebar and container offset */
+@media (min-width: 992px) {
+  .hospital-page .role-sidebar { position: fixed; left: 24px; top: calc(var(--nav-h) + 20px); z-index: 40; }
+  .hospital-page .page-wrap .container { margin-left: 240px; }
+}
 
 @media (max-width: 991px) {
   .role-sidebar { display:none; }
