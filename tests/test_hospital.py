@@ -134,6 +134,7 @@ class HospitalFlowTests(unittest.TestCase):
             hospital = Hospital(user_id=hospital_user.id, name="Create Request Hospital", county="Nairobi", contact_phone="0712345670")
             db.session.add(hospital)
             db.session.commit()
+            hospital_id = hospital.id
 
         with self.client.session_transaction() as session:
             session["_user_id"] = str(hospital_user_id)
@@ -147,7 +148,7 @@ class HospitalFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
 
         with self.app.app_context():
-            requests = BloodRequest.query.filter_by(hospital_id=hospital.id).all()
+            requests = BloodRequest.query.filter_by(hospital_id=hospital_id).all()
             self.assertEqual(len(requests), 1)
             self.assertEqual(requests[0].blood_type, "O+")
             self.assertEqual(requests[0].units_needed, 3)

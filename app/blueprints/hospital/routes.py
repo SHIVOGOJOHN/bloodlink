@@ -246,19 +246,15 @@ def bank_request(bank_id):
             db.session.commit()
             invalidate_forecast_cache()
             bank_notified = notify_bank_of_request(request_record, bank)
-            hospital_notified = notify_hospital_request_created(request_record, bank.name)
+            notify_hospital_request_created(request_record, bank.name)
             status_message = []
             if bank_notified:
                 status_message.append("The blood bank has been notified.")
             else:
                 status_message.append("The blood bank could not be notified by email; please contact them directly.")
-            if hospital_notified:
-                status_message.append("A confirmation email was sent to your hospital account.")
-            else:
-                status_message.append("Hospital confirmation email could not be sent.")
             flash(
                 f"Request created for {bank.name}. {' '.join(status_message)}",
-                "success" if bank_notified and hospital_notified else "warning",
+                "success" if bank_notified else "warning",
             )
         except SQLAlchemyError as exc:
             db.session.rollback()
@@ -281,7 +277,7 @@ def run_forecast():
         flash("Forecast rerun completed successfully.", "success")
     except Exception as exc:
         flash("Unable to rerun the forecast now. Please try again later.", "danger")
-    return redirect(url_for("hospital.dashboard"))
+    return redirect(url_for("hospital.forecast"))
 
 
 @hospital_bp.route("/forecast/upload", methods=["POST"])
@@ -294,11 +290,11 @@ def upload_training_data():
     file_storage = request.files.get("training_csv")
     if not file_storage or not file_storage.filename:
         flash("Please choose a training CSV file to upload.", "warning")
-        return redirect(url_for("hospital.dashboard"))
+        return redirect(url_for("hospital.forecast"))
 
     if not file_storage.filename.lower().endswith(".csv"):
         flash("Only CSV files are accepted for training data uploads.", "warning")
-        return redirect(url_for("hospital.dashboard"))
+        return redirect(url_for("hospital.forecast"))
 
     try:
         file_bytes = file_storage.read()
@@ -318,6 +314,7 @@ def upload_training_data():
             flash("The uploaded CSV contained no new training rows; duplicates were ignored.", "info")
     except Exception:
         flash("Failed to process the uploaded CSV file. Ensure it is valid and UTF-8 encoded.", "danger")
+    return redirect(url_for("hospital.forecast"))
 
     return redirect(url_for("hospital.dashboard"))
 

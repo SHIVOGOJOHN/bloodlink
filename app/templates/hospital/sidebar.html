@@ -5,23 +5,23 @@
   </div>
   <ul class="sidebar-links">
     <li><a class="{{ 'active' if request.endpoint == 'hospital.dashboard' else '' }}" href="{{ url_for('hospital.dashboard') }}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M3 11L12 4l9 7v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8Z" stroke-width="1.5" stroke-linejoin="round"/></svg>
       <span class="skip-collapsed">Dashboard</span>
     </a></li>
     <li><a class="{{ 'active' if request.endpoint == 'hospital.inventory' else '' }}" href="{{ url_for('hospital.inventory') }}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span class="skip-collapsed">National Inventory</span>
     </a></li>
     <li><a class="{{ 'active' if request.endpoint == 'hospital.create_request_page' else '' }}" href="{{ url_for('hospital.create_request_page') }}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M12 5v14M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span class="skip-collapsed">Create Request</span>
     </a></li>
     <li><a class="{{ 'active' if request.endpoint == 'hospital.forecast' else '' }}" href="{{ url_for('hospital.forecast') }}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v6M5 7h14" stroke-width="1.5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M4 17l4-4 4 4 4-8 4 8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="skip-collapsed">Forecast</span>
     </a></li>
     <li><a class="{{ 'active' if request.endpoint == 'hospital.profile' else '' }}" href="{{ url_for('hospital.profile') }}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7" stroke-width="1.5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span class="skip-collapsed">Profile</span>
     </a></li>
   </ul>
