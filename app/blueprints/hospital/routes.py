@@ -163,7 +163,41 @@ def create_request_page():
     hospital = current_user.hospital
     if not hospital:
         return redirect(url_for("hospital.profile_setup"))
-    # delegate to existing POST handling by reusing bank_request flow when a bank is selected
+
+    if request.method == "POST":
+        blood_type = request.form.get("blood_type", "").strip().upper()
+        try:
+            units_needed = int(request.form.get("units_needed", 0) or 0)
+        except ValueError:
+            units_needed = 0
+        urgency_level = request.form.get("urgency_level", "urgent")
+
+        if not blood_type or units_needed <= 0:
+            flash("Please choose a valid blood type and units needed.", "warning")
+            return render_template("hospital/create_request.html", hospital=hospital, blood_type=blood_type)
+
+        try:
+            request_record = BloodRequest(
+                hospital_id=hospital.id,
+                blood_type=blood_type,
+                units_needed=units_needed,
+                urgency_level=urgency_level,
+                status="open",
+            )
+            db.session.add(request_record)
+            db.session.commit()
+            invalidate_forecast_cache()
+            donors_sent, banks_sent = notify_new_blood_request(request_record)
+            flash(
+                f"Blood request created successfully. Notified {donors_sent} eligible donor(s) and {banks_sent} blood bank(s).",
+                "success",
+            )
+            return redirect(url_for("hospital.dashboard"))
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            flash(f"Unable to save the request right now: {exc}", "warning")
+            return render_template("hospital/create_request.html", hospital=hospital, blood_type=blood_type)
+
     blood_type = request.args.get("blood_type", "").strip().upper()
     return render_template("hospital/create_request.html", hospital=hospital, blood_type=blood_type)
 

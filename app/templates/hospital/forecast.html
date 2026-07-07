@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Operational Demand Forecast — BloodLink{% endblock %}
+
+{% block hospital_sidebar %}
+  {% include 'hospital/sidebar.html' %}
+{% endblock %}
+
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
   <div>
