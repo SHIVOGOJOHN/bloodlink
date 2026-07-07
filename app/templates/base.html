@@ -102,16 +102,32 @@
               <span class="text-sm text-muted">{{ current_user.email }}</span>
             </div>
             {% if current_user.role == 'hospital_staff' %}
-              <a href="{{ url_for('hospital.create_request_page') }}" class="mobile-drawer-link">Create Request</a>
-              <a href="{{ url_for('hospital.inventory') }}" class="mobile-drawer-link">Inventory</a>
-              <a href="{{ url_for('hospital.forecast') }}" class="mobile-drawer-link">Forecast</a>
+              <a href="{{ url_for('hospital.create_request_page') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 11h8M12 7v10" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Create Request
+              </a>
+              <a href="{{ url_for('hospital.inventory') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Inventory
+              </a>
+              <a href="{{ url_for('hospital.forecast') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 11h8M12 7v10" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Forecast
+              </a>
             {% elif current_user.role == 'bloodbank_staff' %}
-              <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link">Inventory</a>
-              <a href="{{ url_for('bloodbank.profile') }}" class="mobile-drawer-link">Profile</a>
+              <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Inventory
+              </a>
+              <a href="{{ url_for('bloodbank.profile') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 11h8M12 7v10" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Profile
+              </a>
             {% elif current_user.role == 'donor' %}
-              <a href="{{ url_for('donor.dashboard') }}" class="mobile-drawer-link">Home</a>
-              <a href="{{ url_for('donor.nearby_requests') }}" class="mobile-drawer-link">Nearby Requests</a>
-              <a href="{{ url_for('donor.profile') }}" class="mobile-drawer-link">Profile</a>
+              <a href="{{ url_for('donor.dashboard') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7 6 6 0 0 1 10 7c-2 2.65-8 7-8 7z" stroke-width="1.5"/></svg>Home
+              </a>
+              <a href="{{ url_for('donor.nearby_requests') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Nearby Requests
+              </a>
+              <a href="{{ url_for('donor.profile') }}" class="mobile-drawer-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7 6 6 0 0 1 10 7c-2 2.65-8 7-8 7z" stroke-width="1.5"/></svg>Profile
+              </a>
             {% else %}
               {% if current_user.role in dashboard_routes %}
                 <a href="{{ url_for(dashboard_routes[current_user.role]) }}" class="mobile-drawer-link">Dashboard</a>
@@ -206,6 +222,26 @@
         overlay.addEventListener('click', closeMenu);
         closeBtn.addEventListener('click', closeMenu);
         panel.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+      })();
+    </script>
+    <script>
+      // Sidebar toggle behavior: persist collapsed state in localStorage
+      (function () {
+        function setupSidebar(sidebarId, toggleId) {
+          var sidebar = document.getElementById(sidebarId);
+          var toggle = document.getElementById(toggleId);
+          if (!sidebar || !toggle) return;
+          var key = sidebarId + ':collapsed';
+          var collapsed = localStorage.getItem(key) === '1';
+          if (collapsed) sidebar.classList.add('collapsed');
+          toggle.addEventListener('click', function () {
+            var now = sidebar.classList.toggle('collapsed');
+            localStorage.setItem(key, now ? '1' : '0');
+            toggle.setAttribute('aria-pressed', now ? 'true' : 'false');
+          });
+        }
+        setupSidebar('donor-sidebar', 'donor-sidebar-toggle');
+        setupSidebar('bank-sidebar', 'bank-sidebar-toggle');
       })();
     </script>
     <script>
