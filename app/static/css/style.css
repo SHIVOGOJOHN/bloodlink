@@ -518,7 +518,10 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   white-space: nowrap;
 }
 .forecast-actions-row {
+  display: flex;
   align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 .forecast-actions-text {
   flex: 1 1 360px;
@@ -530,6 +533,13 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   align-items: flex-end;
   min-width: 280px;
   gap: 0.8rem;
+  max-width: 440px;
+}
+@media (max-width: 992px) {
+  .forecast-actions-controls {
+    align-items: stretch;
+    text-align: left;
+  }
 }
 .forecast-actions-controls .tiny {
   max-width: 420px;

@@ -41,7 +41,8 @@ def init_database(app):
                     ("subcounty", "VARCHAR(100)"),
                     ("ward", "VARCHAR(100)"),
                     ("latitude", "DOUBLE"),
-                    ("longitude", "DOUBLE")
+                    ("longitude", "DOUBLE"),
+                    ("loyalty_points", "INT DEFAULT 0")
                 ]),
                 (Hospital.__tablename__, [
                     ("subcounty", "VARCHAR(100)"),

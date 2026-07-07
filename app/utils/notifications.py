@@ -107,7 +107,11 @@ def notify_new_blood_request(blood_request: BloodRequest) -> tuple[int, int]:
     return donors_sent, banks_sent
 
 
-def notify_donor_donation_confirmed(donation: DonationRecord) -> bool:
+def notify_donor_donation_confirmed(
+    donation: DonationRecord,
+    points_awarded: int = 0,
+    unlocked_badges: list[str] | None = None,
+) -> bool:
     donor = donation.donor
     if not donor or not getattr(donor, "user", None):
         return False
@@ -118,10 +122,17 @@ def notify_donor_donation_confirmed(donation: DonationRecord) -> bool:
     hospital = donation.hospital
     hospital_url = url_for("public_hospital_profile", hospital_id=hospital.id, _external=True) if hospital else ""
     subject = "Donation confirmed — thank you from BloodLink"
+    badge_message = ""
+    if unlocked_badges:
+        badge_message = f"\n\nYou unlocked: {', '.join(unlocked_badges)}!"
     body = (
         f"Thank you {donor.name},\n\n"
         f"Your donation of {donation.blood_type} has been confirmed by {hospital.name if hospital else 'the hospital'}.\n"
         f"Hospital profile: {hospital_url}\n\n"
+        f"You earned {points_awarded} loyalty point{'s' if points_awarded != 1 else ''}.\n"
+        f"Your total loyalty balance is now {donor.loyalty_points or 0} points.\n"
+        f"Your current loyalty rank is {donor.loyalty_rank}."
+        f"{badge_message}\n\n"
         "You are now prioritized for future donation opportunities."
     )
     return _send_email_safe(subject, email, body)

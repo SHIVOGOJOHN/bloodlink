@@ -57,6 +57,36 @@ MONTH_NAMES = [
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ]
 
+# The training upload pipeline is tolerant of extra hospital-specific columns.
+# Only the canonical fields below are recognized; any additional CSV headers are ignored.
+# Required fields appear under REQUIRED_TRAINING_FIELDS, while optional inputs may
+# be supplied using any supported alias.
+REQUIRED_TRAINING_FIELDS = [
+    "hospital_id",
+    "county",
+    "blood_type",
+    "urgency_level",
+    "units_needed",
+    "target",
+]
+OPTIONAL_TRAINING_FIELDS = [
+    "request_id",
+    "created_at",
+    "day_of_week_name",
+    "month_name",
+    "is_weekend",
+    "holiday_flag",
+    "recent_hospital_requests_30d",
+    "recent_hospital_requests_90d",
+    "recent_county_requests_30d",
+    "recent_blood_type_requests_30d",
+    "recent_blood_type_requests_90d",
+    "county_stock_total",
+    "county_stock_pressure",
+    "bank_count_in_county",
+    "source",
+]
+
 HOSPITAL_FEATURE_ALIASES = {
     "hospital_id": ["hospital_id", "facility_id", "site_id", "facility"],
     "county": ["county", "county_name", "hospital_county", "location_county"],
@@ -71,6 +101,7 @@ HOSPITAL_FEATURE_ALIASES = {
     "recent_hospital_requests_90d": ["recent_hospital_requests_90d", "hospital_requests_90d"],
     "recent_county_requests_30d": ["recent_county_requests_30d", "county_requests_30d"],
     "recent_blood_type_requests_30d": ["recent_blood_type_requests_30d", "blood_type_requests_30d"],
+    "recent_blood_type_requests_90d": ["recent_blood_type_requests_90d", "blood_type_requests_90d"],
     "county_stock_total": ["county_stock_total", "stock_total"],
     "county_stock_pressure": ["county_stock_pressure", "stock_pressure"],
     "bank_count_in_county": ["bank_count_in_county", "blood_bank_count"],
@@ -389,7 +420,8 @@ def upload_training_csv_stream(file_stream: io.TextIOBase, hospital: Hospital) -
     hospital_county = (hospital.county or "Unknown").strip() or "Unknown"
 
     for raw in reader:
-        normalized = _normalize_training_row(raw)
+        canonical = canonicalize_hospital_upload_row({k.strip(): v for k, v in raw.items() if k is not None})
+        normalized = _normalize_training_row(canonical)
         normalized["hospital_id"] = hospital_id_value
         normalized["county"] = hospital_county
         if not normalized["created_at"]:

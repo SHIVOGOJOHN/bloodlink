@@ -73,8 +73,22 @@
     <div class="col-md-4">
       <div class="stat-card">
         <div class="stat-label">Donations Completed</div>
-        <div class="stat-value">{{ donation_history|length }}</div>
+        <div class="stat-value">{{ confirmed_count }}</div>
         <div class="stat-sub">confirmed donation(s)</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-label">Loyalty Points</div>
+        <div class="stat-value">{{ donor.loyalty_points or 0 }}</div>
+        <div class="stat-sub">points earned from donations</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-label">Loyalty Rank</div>
+        <div class="stat-value">{{ donor.loyalty_rank }}</div>
+        <div class="stat-sub">based on your total points</div>
       </div>
     </div>
     <div class="col-md-4">
@@ -83,7 +97,7 @@
         <div class="stat-value" style="font-size: 1.15rem; margin-top: 8px; margin-bottom: 2px;">
           {% if badges %}
             {% for badge in badges %}
-              <span class="badge bg-primary px-2 py-1" style="font-size: 0.72rem; vertical-align: middle;">{{ badge }}</span>
+              <span class="badge" style="background: {{ badge.color }}; color: #fff; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 0.75rem; margin: 0 0.2rem 0.2rem 0;">{{ badge.icon_svg|safe }}{{ badge.name }}</span>
             {% endfor %}
           {% else %}
             <span class="text-muted" style="font-size: 0.9rem; font-weight: 500;">No badges yet</span>
@@ -92,48 +106,7 @@
         <div class="stat-sub">Unlock by completing donations</div>
       </div>
     </div>
-  </div>
 
-  {# ── Open requests section ────────────────────────────────── #}
-  <div class="card-container">
-    <div class="fw-semibold mb-1" style="font-size:1rem;">Open Requests Near the Donor Network</div>
-    <div class="tiny text-muted mb-4">Urgent hospital demands requiring compatible blood donations. Contact the hospital if you can assist.</div>
-
-    {% if active_requests %}
-    <ul class="list-unstyled mb-0">
-      {% for req in active_requests %}
-      <li style="padding: 14px 0; border-bottom: 1px solid var(--border);">
-        <div class="d-flex justify-content-between align-items-start gap-3">
-
-          {# Hospital identity #}
-          <div class="d-flex gap-3 align-items-start flex-grow-1">
-            {% if req.hospital and req.hospital.profile_pic_url %}
-              <img src="{{ req.hospital.profile_pic_url }}" alt="{{ req.hospital.name }}"
-                style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;margin-top:2px;">
-            {% else %}
-              <div style="width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:var(--blue);flex-shrink:0;margin-top:2px;">
-                {{ (req.hospital.name if req.hospital else 'H')[0].upper() }}
-              </div>
-            {% endif %}
-
-            <div>
-              <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                <span class="badge bg-danger" style="font-size:0.8rem;">{{ req.blood_type }}</span>
-                <span class="fw-semibold">{{ req.units_needed }} units requested</span>
-                {% if req.urgency_level == 'urgent' %}
-                  <span class="badge bg-warning text-dark">Urgent</span>
-                {% else %}
-                  <span class="badge bg-secondary">Normal</span>
-                {% endif %}
-              </div>
-              <div class="tiny text-muted">
-                {% if req.hospital %}
-                  Requested by: <a href="{{ url_for('public_hospital_profile', hospital_id=req.hospital.id) }}"
-                    class="text-decoration-none" style="color:var(--primary);">{{ req.hospital.name }}</a>
-                  &nbsp;·&nbsp; {{ req.hospital.county }} County
-                  {% if req.hospital.subcounty %} &bull; {{ req.hospital.subcounty }}{% endif %}
-                {% else %}
-                  Hospital ID {{ req.hospital_id }}
                 {% endif %}
                 &nbsp;·&nbsp; {{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '' }}
               </div>

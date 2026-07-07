@@ -920,8 +920,22 @@ def score_donor(
 
     # --- Score components ---
     compat_score = 60
-    elig_score   = 30
-    
+    elig_score = 30
+
+    def _normalize_location(value: str | None) -> str:
+        return str(value or "").strip().lower()
+
+    donor_county = _normalize_location(donor.county)
+    hospital_county = _normalize_location(hospital.county)
+    donor_subcounty = _normalize_location(donor.subcounty)
+    hospital_subcounty = _normalize_location(hospital.subcounty)
+    donor_ward = _normalize_location(donor.ward)
+    hospital_ward = _normalize_location(hospital.ward)
+
+    same_ward = donor_ward and hospital_ward and donor_ward == hospital_ward
+    same_subcounty = donor_subcounty and hospital_subcounty and donor_subcounty == hospital_subcounty
+    same_county = donor_county and hospital_county and donor_county == hospital_county
+
     # Precise GPS location check
     gps_active = False
     if (donor.latitude is not None and donor.longitude is not None and
@@ -931,15 +945,30 @@ def score_donor(
             hospital.latitude, hospital.longitude
         )
         gps_active = True
+        locality_label = "exact GPS distance"
+    elif same_ward:
+        distance_km = 2.0
+        locality_label = "same ward/locality"
+    elif same_subcounty:
+        distance_km = 4.0
+        locality_label = "same subcounty"
+    elif same_county:
+        distance_km = 10.0
+        locality_label = "same county"
     else:
-        # Fall back to county headquarters distance
+        # Fall back to county headquarters distance when no finer locality data is available
         distance_km = float(get_distance(hospital.county, donor.county))
+        locality_label = "county-level estimate"
 
     prox_score = proximity_score(distance_km)
     total_score = compat_score + elig_score + prox_score
 
     # --- Breakdown reasons (visible to judges) ---
-    dist_label = f"~{distance_km} km (exact GPS match)" if gps_active else f"~{distance_km} km (county level estimate)"
+    if gps_active:
+        dist_label = f"~{distance_km} km (exact GPS match)"
+    else:
+        dist_label = f"~{distance_km} km ({locality_label})"
+
     reasons: list[str] = [
         f"Blood type {donor.blood_type} is compatible with {requested_blood_type} (+{compat_score} pts)",
         (
@@ -947,11 +976,7 @@ def score_donor(
             if days_since_last is None
             else f"Last donated {days_since_last} days ago ≥ 90-day rule (+{elig_score} pts)"
         ),
-        (
-            f"Same county ({donor.county}) — 0 km (+{prox_score} pts)"
-            if distance_km == 0
-            else f"{dist_label} (+{prox_score} pts)"
-        ),
+        f"{dist_label} (+{prox_score} pts)",
     ]
 
     # --- AI narrative ---
@@ -1001,6 +1026,6 @@ def rank_donors_for_request(
         if result is not None:
             results.append(result)
 
-    results.sort(key=lambda r: (-r["score"], r["donor"].name))
+    results.sort(key=lambda r: (-r["score"], r["distance_km"], r["donor"].name))
     return results
 

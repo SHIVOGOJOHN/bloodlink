@@ -68,7 +68,19 @@ class Donor(db.Model):
     consent_timestamp = db.Column(db.DateTime, nullable=True)
     profile_pic_url = db.Column(db.String(512), nullable=True)
     bio = db.Column(db.Text, nullable=True)
+    loyalty_points = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def loyalty_rank(self):
+        points = self.loyalty_points or 0
+        if points >= 300:
+            return "Blood Shield"
+        if points >= 150:
+            return "Lifesaver"
+        if points >= 50:
+            return "Community Ally"
+        return "Novice Donor"
 
 
 class Hospital(db.Model):

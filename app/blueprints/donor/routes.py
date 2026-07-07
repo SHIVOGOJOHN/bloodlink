@@ -5,6 +5,7 @@ from flask_login import current_user
 
 from app.models import BloodRequest, DonationRecord, Donor
 from app.utils.auth import role_required
+from app.utils.loyalty import get_badges_for_donation_count, get_next_badge
 from app.extensions import db
 
 
@@ -18,25 +19,19 @@ def dashboard():
     if not donor:
         return redirect(url_for("donor.profile_setup"))
 
-    donation_history = DonationRecord.query.filter_by(donor_id=donor.id).all()
+    donation_history = DonationRecord.query.filter_by(donor_id=donor.id).order_by(DonationRecord.confirmed_at.desc()).all()
     active_requests = BloodRequest.query.filter_by(status="open").all()
-    
+
     # Calculate eligibility
     days_since_last = None
     eligible = True
     if donor.last_donation_date:
         days_since_last = (date.today() - donor.last_donation_date).days
         eligible = days_since_last >= 90
-    
-    # Calculate badges
-    confirmed_donations = [d for d in donation_history if d.status == "confirmed"]
-    badges = []
-    if len(confirmed_donations) >= 1:
-        badges.append("First Drop")
-    if len(confirmed_donations) >= 5:
-        badges.append("Life Saver")
-    if len(confirmed_donations) >= 10:
-        badges.append("Blood Hero")
+
+    confirmed_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
+    badges = get_badges_for_donation_count(confirmed_count)
+    next_badge = get_next_badge(confirmed_count)
 
     return render_template(
         "donor/dashboard.html",
@@ -46,6 +41,8 @@ def dashboard():
         days_since_last=days_since_last,
         eligible=eligible,
         badges=badges,
+        next_badge=next_badge,
+        confirmed_count=confirmed_count,
     )
 
 
@@ -156,13 +153,8 @@ def profile():
 
     # Badges check
     donation_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
-    badges = []
-    if donation_count >= 1:
-        badges.append("First Drop")
-    if donation_count >= 5:
-        badges.append("Life Saver")
-    if donation_count >= 10:
-        badges.append("Blood Hero")
+    badges = get_badges_for_donation_count(donation_count)
+    next_badge = get_next_badge(donation_count)
 
     return render_template(
         "donor/profile.html",
@@ -171,5 +163,6 @@ def profile():
         days_left=days_left,
         donation_count=donation_count,
         badges=badges,
+        next_badge=next_badge,
     )
 

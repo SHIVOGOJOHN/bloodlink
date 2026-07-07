@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 from app.models import BloodBank, BloodBankStock, BloodRequest, Donor, DonationRecord, Hospital
 from app.utils.auth import role_required
+from app.utils.loyalty import calculate_reward_for_donation
 from app.utils.notifications import (
     notify_new_blood_request,
     notify_donor_donation_confirmed,
@@ -308,13 +309,19 @@ def confirm_donation():
             db.session.add(new_stock)
 
     db.session.add(donation)
+
+    # Reward donor for confirmed donation
+    confirmed_count = DonationRecord.query.filter_by(donor_id=donor.id, status="confirmed").count()
+    points_awarded, unlocked_badges = calculate_reward_for_donation(confirmed_count)
+    donor.loyalty_points = (donor.loyalty_points or 0) + points_awarded
     db.session.commit()
     invalidate_forecast_cache()
 
-    mail_sent = notify_donor_donation_confirmed(donation)
+    badge_text = f" and unlocked {', '.join(unlocked_badges)}" if unlocked_badges else ""
+    mail_sent = notify_donor_donation_confirmed(donation, points_awarded=points_awarded, unlocked_badges=unlocked_badges)
     if mail_sent:
         flash(
-            f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}) and donor notified by email.",
+            f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}), {points_awarded} loyalty points awarded{badge_text}, and donor notified by email.",
             "success",
         )
     else:
