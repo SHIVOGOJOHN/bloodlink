@@ -78,7 +78,7 @@ def contact():
         recipient=recipient,
         body=message_body,
         reply_to=reply_to,
-        async_send=False,
+        async_send=current_app.config.get("MAIL_ASYNC", True),
     )
     if sent:
         flash("Support request sent. We will get back to you as soon as possible.", "success")

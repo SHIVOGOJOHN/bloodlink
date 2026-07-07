@@ -55,7 +55,7 @@ def _send_password_reset_email(user: User, raw_token: str) -> bool:
         subject="Reset your BloodLink password",
         recipient=user.email,
         body=body,
-        async_send=False,
+        async_send=current_app.config.get("MAIL_ASYNC", True),
     )
 
 
@@ -182,10 +182,10 @@ def forgot_password():
                 )
             )
             db.session.commit()
-            if not _send_password_reset_email(user, raw_token):
-                current_app.logger.exception("Password reset email failed for %s", user.email)
-                flash("We created a reset link but could not send email. Check Gmail SMTP settings.", "danger")
-                return render_template("auth/forgot_password.html")
+            try:
+                _send_password_reset_email(user, raw_token)
+            except Exception:
+                current_app.logger.exception("Password reset email scheduling failed for %s", user.email)
 
         flash("If an account exists for that email, a reset link has been sent.", "info")
         return redirect(url_for("auth.login"))
