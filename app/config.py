@@ -38,14 +38,15 @@ class Config:
         SQLALCHEMY_DATABASE_URI = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, filtered_query, parsed.fragment))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
-    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com").strip()
     MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
-    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
-    MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() == "true"
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").strip().lower() == "true"
+    MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").strip().lower() == "true"
     MAIL_TIMEOUT = int(os.getenv("MAIL_TIMEOUT", "10"))
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "bloodlink@example.com")
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "").strip()
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "").strip()
+    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "").strip() or os.getenv("MAIL_USERNAME", "").strip()
+    MAIL_ASYNC = os.getenv("MAIL_ASYNC", "true").strip().lower() == "true"
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
     GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "").strip()

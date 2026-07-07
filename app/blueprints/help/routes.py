@@ -1,9 +1,8 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
-from flask_mail import Message
 
-from app.extensions import mail
 from app.utils.auth import role_required
+from app.utils.notifications import send_email_notification
 
 help_bp = Blueprint("help", __name__, url_prefix="/help")
 
@@ -74,17 +73,16 @@ def contact():
         f"{message_text}\n"
     )
 
-    try:
-        message = Message(
-            subject=f"[BloodLink support] {subject}",
-            sender=current_app.config.get("MAIL_DEFAULT_SENDER") or recipient,
-            recipients=[recipient],
-            reply_to=reply_to,
-            body=message_body,
-        )
-        mail.send(message)
+    sent = send_email_notification(
+        subject=f"[BloodLink support] {subject}",
+        recipient=recipient,
+        body=message_body,
+        reply_to=reply_to,
+        async_send=False,
+    )
+    if sent:
         flash("Support request sent. We will get back to you as soon as possible.", "success")
-    except Exception:
+    else:
         flash("Unable to send the help request right now. Please try again later.", "danger")
 
     return redirect(redirect_to)

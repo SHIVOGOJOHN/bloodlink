@@ -6,12 +6,12 @@ from urllib.parse import urlencode, urljoin
 
 import requests
 from flask import Blueprint, current_app, render_template, redirect, url_for, flash, request, session
-from flask_mail import Message
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from app.extensions import db, mail
+from app.extensions import db
 from app.models import PasswordResetToken, User
+from app.utils.notifications import send_email_notification
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -43,21 +43,36 @@ def role_dashboard(role: str):
 
 
 
-def _send_password_reset_email(user: User, raw_token: str) -> None:
+def _send_password_reset_email(user: User, raw_token: str) -> bool:
     reset_url = url_for("auth.reset_password", token=raw_token, _external=True)
-    sender = current_app.config.get("MAIL_DEFAULT_SENDER") or current_app.config.get("MAIL_USERNAME")
-    message = Message(
-        subject="Reset your BloodLink password",
-        sender=sender,
-        recipients=[user.email],
-        body=(
-            f"Hello {user.full_name or 'there'},\n\n"
-            "Use this link to reset your BloodLink password. The link expires in 1 hour:\n"
-            f"{reset_url}\n\n"
-            "If you did not request this, you can ignore this email."
-        ),
+    body = (
+        f"Hello {user.full_name or 'there'},\n\n"
+        "Use this link to reset your BloodLink password. The link expires in 1 hour:\n"
+        f"{reset_url}\n\n"
+        "If you did not request this, you can ignore this email."
     )
-    mail.send(message)
+    return send_email_notification(
+        subject="Reset your BloodLink password",
+        recipient=user.email,
+        body=body,
+        async_send=False,
+    )
+
+
+def _send_welcome_email(user: User) -> bool:
+    subject = "Welcome to BloodLink"
+    body = (
+        f"Hello {user.full_name or 'there'},\n\n"
+        "Thank you for joining BloodLink. Your account is ready and you can now access blood donation and request services through the portal.\n\n"
+        "If you have any questions, reply to this email or contact support through the dashboard.\n\n"
+        "Welcome aboard!"
+    )
+    return send_email_notification(
+        subject=subject,
+        recipient=user.email,
+        body=body,
+        async_send=current_app.config.get("MAIL_ASYNC", True),
+    )
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -167,9 +182,7 @@ def forgot_password():
                 )
             )
             db.session.commit()
-            try:
-                _send_password_reset_email(user, raw_token)
-            except Exception as exc:
+            if not _send_password_reset_email(user, raw_token):
                 current_app.logger.exception("Password reset email failed for %s", user.email)
                 flash("We created a reset link but could not send email. Check Gmail SMTP settings.", "danger")
                 return render_template("auth/forgot_password.html")
@@ -317,6 +330,22 @@ def google_callback():
     login_user(user)
     flash("Signed in with Google.", "success")
     return redirect(url_for(role_dashboard(user.role)))
+
+
+def _send_welcome_email(user: User) -> bool:
+    subject = "Welcome to BloodLink"
+    body = (
+        f"Hello {user.full_name or 'there'},\n\n"
+        "Thank you for joining BloodLink. Your account is ready and you can now access blood donation and request services through the portal.\n\n"
+        "If you have any questions, reply to this email or contact support through the dashboard.\n\n"
+        "Welcome aboard!"
+    )
+    return send_email_notification(
+        subject=subject,
+        recipient=user.email,
+        body=body,
+        async_send=current_app.config.get("MAIL_ASYNC", True),
+    )
 
 
 @auth_bp.route("/switch-role/<role>", methods=["POST"])

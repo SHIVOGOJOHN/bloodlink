@@ -24,26 +24,10 @@ def _log_notification(recipient: str, channel: str, message: str, status: str) -
         db.session.rollback()
 
 
-def _send_email(message: Message) -> None:
-    mail.send(message)
-    _log_notification(message.recipients[0], "email", message.subject, "sent")
-
-
-def _send_email_async(app, message: Message) -> None:
-    with app.app_context():
-        try:
-            mail.send(message)
-            _log_notification(message.recipients[0], "email", message.subject, "sent")
-        except Exception:
-            current_app.logger.exception("Failed to send notification email to %s", message.recipients[0])
-            _log_notification(message.recipients[0], "email", message.subject, "failed")
-
-
-def _send_email_sync_or_async(subject: str, recipient: str, body: str, reply_to: str | None = None) -> bool:
+def _create_email_message(subject: str, recipient: str, body: str, reply_to: str | None = None) -> Message:
     sender = current_app.config.get("MAIL_DEFAULT_SENDER") or current_app.config.get("MAIL_USERNAME")
     if not sender:
-        current_app.logger.warning("Email sender is not configured; skipping email to %s", recipient)
-        return False
+        raise RuntimeError("Email sender is not configured")
 
     message = Message(
         subject=subject,
@@ -53,18 +37,52 @@ def _send_email_sync_or_async(subject: str, recipient: str, body: str, reply_to:
     )
     if reply_to:
         message.reply_to = reply_to
+    return message
+
+
+def _send_message(message: Message) -> None:
+    mail.send(message)
+    _log_notification(message.recipients[0], "email", message.subject, "sent")
+
+
+def _send_message_async(app, message: Message) -> None:
+    with app.app_context():
+        try:
+            mail.send(message)
+            _log_notification(message.recipients[0], "email", message.subject, "sent")
+        except Exception:
+            current_app.logger.exception("Failed to send notification email to %s", message.recipients[0])
+            _log_notification(message.recipients[0], "email", message.subject, "failed")
+
+
+def send_email_notification(
+    subject: str,
+    recipient: str,
+    body: str,
+    reply_to: str | None = None,
+    async_send: bool | None = None,
+) -> bool:
+    if async_send is None:
+        async_send = current_app.config.get("MAIL_ASYNC", True)
+
+    try:
+        message = _create_email_message(subject, recipient, body, reply_to=reply_to)
+    except Exception:
+        current_app.logger.exception("Failed to create email message for %s", recipient)
+        _log_notification(recipient, "email", subject, "failed")
+        return False
 
     timeout = current_app.config.get("MAIL_TIMEOUT", 10)
     current_app.config["MAIL_TIMEOUT"] = timeout
 
-    if current_app.config.get("MAIL_ASYNC", True):
+    if async_send:
         app = current_app._get_current_object()
-        thread = threading.Thread(target=_send_email_async, args=(app, message), daemon=True)
+        thread = threading.Thread(target=_send_message_async, args=(app, message), daemon=True)
         thread.start()
         return True
 
     try:
-        _send_email(message)
+        _send_message(message)
         return True
     except Exception:
         current_app.logger.exception("Failed to send notification email to %s", recipient)
@@ -74,7 +92,7 @@ def _send_email_sync_or_async(subject: str, recipient: str, body: str, reply_to:
 
 def _send_email_safe(subject: str, recipient: str, body: str, reply_to: str | None = None) -> bool:
     try:
-        return _send_email_sync_or_async(subject, recipient, body, reply_to=reply_to)
+        return send_email_notification(subject, recipient, body, reply_to=reply_to)
     except Exception:
         current_app.logger.exception("Failed to send notification email to %s", recipient)
         _log_notification(recipient, "email", subject, "failed")
