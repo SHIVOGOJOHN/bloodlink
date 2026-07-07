@@ -83,6 +83,7 @@
               <a href="{{ url_for('hospital.profile') }}" class="mobile-drawer-link {% if request.endpoint == 'hospital.profile' %}active{% endif %}">Profile</a>
             {% elif current_user.role == 'bloodbank_staff' %}
               <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link {% if request.endpoint and request.endpoint.startswith('bloodbank.') %}active{% endif %}">Inventory</a>
+              <a href="{{ url_for('bloodbank.dashboard') }}#requests" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.dashboard' %}active{% endif %}">Incoming requests</a>
               <a href="{{ url_for('bloodbank.profile') }}" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.profile' %}active{% endif %}">Profile</a>
             {% elif current_user.role == 'donor' %}
               <a href="{{ url_for('donor.dashboard') }}" class="mobile-drawer-link {% if request.endpoint == 'donor.dashboard' %}active{% endif %}">Dashboard</a>

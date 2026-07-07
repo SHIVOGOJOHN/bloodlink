@@ -165,6 +165,51 @@ body.dark-theme .role-pill { background: #3d1515; color: #fca5a5; }
   font-weight: 700;
 }
 
+.request-list-item,
+.featured-request-card,
+.match-item,
+.list-group-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.request-list-item {
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.request-list-item:last-child,
+.featured-request-card:last-child {
+  margin-bottom: 0;
+}
+
+.request-list-item .badge,
+.featured-request-card .badge,
+.match-item .badge {
+  font-size: 0.78rem;
+}
+
+.request-list-item a,
+.featured-request-card a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.request-list-item a:hover,
+.featured-request-card a:hover {
+  text-decoration: underline;
+}
+
+.request-list-item .hospital-link {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.request-list-item .hospital-link:hover {
+  color: var(--blue);
+}
+
 @media (min-width: 992px) {
   .hospital-page .role-sidebar { position: fixed; left: 24px; top: calc(var(--nav-h) + 20px); z-index: 40; }
   .hospital-page .page-wrap .container { margin-left: 240px; }
@@ -345,13 +390,25 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   padding: 20px; min-height: 100%;
 }
 .reward-progress {
-  width: 100%; background: var(--border); border-radius: 999px; height: 12px; overflow: hidden;
+  width: 100%; background: var(--border); border-radius: 999px; height: 14px; overflow: hidden;
 }
 .reward-progress-fill {
   height: 100%; border-radius: 999px;
+  transition: width 0.25s ease;
 }
 .reward-summary-complete {
   font-weight: 600; color: var(--green);
+}
+.certificate-icon svg,
+.badge-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.certificate-icon,
+.badge-icon {
+  min-width: 38px;
+  min-height: 38px;
 }
 .badge-grid {
   display: grid;
@@ -380,7 +437,12 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   background: var(--white); font-size: .82rem;
 }
 .certificate-icon {
-  display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center;
+  display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center;
+}
+.badge-icon {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 12px;
+  background: rgba(15, 118, 110, 0.08); font-size: 0.95rem;
 }
 .list-group-item {
   background: var(--white);

@@ -18,14 +18,7 @@
   </div>
 
   <div class="row g-4">
-    <aside class="col-lg-3 d-none d-lg-block role-sidebar" id="donor-sidebar">
-      <ul class="sidebar-links">
-        <li><a class="{{ 'active' if request.endpoint == 'donor.dashboard' else '' }}" href="{{ url_for('donor.dashboard') }}">Dashboard</a></li>
-        <li><a class="{{ 'active' if request.endpoint == 'donor.nearby_requests' else '' }}" href="{{ url_for('donor.nearby_requests') }}">Nearby requests</a></li>
-        <li><a class="{{ 'active' if request.endpoint == 'donor.profile' else '' }}" href="{{ url_for('donor.profile') }}">Profile</a></li>
-        <li><a class="{{ 'active' if request.endpoint == 'donor.profile_setup' else '' }}" href="{{ url_for('donor.profile_setup') }}">Edit profile</a></li>
-      </ul>
-    </aside>
+    {% include 'donor/sidebar.html' %}
     <div class="col-lg-9">
 
   {# Flash messages #}
@@ -240,10 +233,10 @@
         {% if featured_requests %}
           <div class="list-group list-group-flush">
             {% for req in featured_requests %}
-              <div class="list-group-item p-3 mb-2 rounded border">
+              <div class="request-list-item">
                 <div class="d-flex justify-content-between align-items-start gap-3">
                   <div>
-                    <div class="fw-semibold">{{ req.hospital.name }}</div>
+                    <a href="{{ url_for('public_hospital_profile', hospital_id=req.hospital.id) }}" class="hospital-link fw-semibold">{{ req.hospital.name }}</a>
                     <div class="tiny text-muted">{{ req.hospital.county }}{% if req.hospital.subcounty %}, {{ req.hospital.subcounty }}{% endif %}</div>
                   </div>
                   <div class="text-end">
@@ -261,7 +254,10 @@
                 </div>
                 <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
                   <div class="tiny text-muted">{{ req.distance_display }} · {{ req.travel_time }}</div>
-                  <a href="tel:{{ req.contact_phone }}" class="btn btn-outline-primary btn-sm">Contact Hospital</a>
+                  <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <a href="{{ url_for('public_hospital_profile', hospital_id=req.hospital.id) }}" class="btn btn-outline-secondary btn-sm">View Hospital</a>
+                    <a href="tel:{{ req.contact_phone }}" class="btn btn-outline-primary btn-sm">Contact Hospital</a>
+                  </div>
                 </div>
               </div>
             {% endfor %}
