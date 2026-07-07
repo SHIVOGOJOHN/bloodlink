@@ -588,6 +588,27 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   flex-direction: column;
   gap: 0.5rem;
 }
+.inventory-bank-segment-local {
+  max-height: 340px;
+  overflow: hidden;
+}
+.inventory-bank-segment-local details {
+  margin-top: 0.5rem;
+}
+.inventory-bank-segment-local summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--primary);
+}
+.inventory-bank-segment-local summary::-webkit-details-marker {
+  display: none;
+}
+.inventory-bank-segment-local summary:before {
+  content: '\25BE';
+  display: inline-block;
+  margin-right: 0.35rem;
+  transform: translateY(0.1em);
+}
 .inventory-remote-more summary {
   cursor: pointer;
   font-weight: 600;

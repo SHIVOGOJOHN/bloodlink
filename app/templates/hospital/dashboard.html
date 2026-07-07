@@ -84,10 +84,10 @@
 
           {% if info and info.banks %}
           <div class="inventory-bank-list">
-            <div class="inventory-bank-segment">
+            <div class="inventory-bank-segment inventory-bank-segment-local">
               <div class="tiny text-muted inventory-bank-list-title">Local banks in {{ hospital.county }} County</div>
               {% if info.local_banks %}
-                {% for bank in info.local_banks %}
+                {% for bank in info.local_banks[:3] %}
                 <div class="inventory-bank-item inventory-bank-item-local">
                   <div class="d-flex justify-content-between align-items-start gap-2">
                     <div>
@@ -115,6 +115,41 @@
                   </div>
                 </div>
                 {% endfor %}
+                {% if info.local_banks|length > 3 %}
+                <details class="inventory-local-more mt-2">
+                  <summary>Show {{ info.local_banks|length - 3 }} more local bank{{ '' if info.local_banks|length - 3 == 1 else 's' }}</summary>
+                  <div class="mt-2">
+                    {% for bank in info.local_banks[3:] %}
+                    <div class="inventory-bank-item inventory-bank-item-local">
+                      <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div class="fw-semibold inventory-bank-name">
+                            <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                              {{ bank.name }}
+                            </a>
+                          </div>
+                          <div class="tiny text-muted">
+                            {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                            {% if bank.distance is not none %}
+                              · ~{{ bank.distance }} km away
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="text-end">
+                          <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                          <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                            {% if bank.contact_phone %}
+                              <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                            {% endif %}
+                            <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </details>
+                {% endif %}
               {% else %}
                 <div class="tiny text-muted">No registered local bank is currently reporting {{ blood_type }} stock.</div>
               {% endif %}
