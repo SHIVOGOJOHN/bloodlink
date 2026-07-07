@@ -59,11 +59,11 @@
     </div>
 
     {% if stock_summary %}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+    <div class="inventory-grid">
       {% for blood_type in ['O-','O+','A-','A+','B-','B+','AB-','AB+'] %}
         {% set info = stock_summary.get(blood_type) %}
         {% set local_units = local_stock | selectattr('blood_type','equalto',blood_type) | map(attribute='units_available') | sum %}
-        <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;background:var(--surface);">
+        <div class="inventory-card">
           <div class="d-flex align-items-center justify-content-between mb-1">
             <span class="badge bg-danger" style="font-size:0.82rem;">{{ blood_type }}</span>
             {% if info and info.total > 10 %}
@@ -78,6 +78,50 @@
           <div class="tiny text-muted">units total</div>
           {% if local_units > 0 %}
           <div class="tiny mt-1" style="color:var(--green);">{{ local_units }} local</div>
+          {% endif %}
+
+          {% if info and info.banks %}
+          <div class="inventory-bank-list">
+            <div class="tiny text-muted inventory-bank-list-title">Blood banks with this stock</div>
+
+            {% for bank in info.banks if bank.county == hospital.county %}
+            <div class="inventory-bank-item inventory-bank-item-local">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <div class="fw-semibold inventory-bank-name">
+                    <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                      {{ bank.name }}
+                    </a>
+                  </div>
+                  <div class="tiny text-muted">
+                    {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                  </div>
+                </div>
+                <span class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</span>
+              </div>
+            </div>
+            {% endfor %}
+
+            {% for bank in info.banks if bank.county != hospital.county %}
+            <div class="inventory-bank-item">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <div class="fw-semibold inventory-bank-name">
+                    <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                      {{ bank.name }}
+                    </a>
+                  </div>
+                  <div class="tiny text-muted">
+                    {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                  </div>
+                </div>
+                <span class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="tiny text-muted mt-2">No blood bank is currently reporting {{ blood_type }} stock.</div>
           {% endif %}
         </div>
       {% endfor %}
@@ -358,13 +402,21 @@
 
     <div class="mt-4">
       <div class="row g-3">
-        <div class="col-md-6 forecast-chart-panel" style="height:280px;">
-          <div class="fw-semibold mb-2">Demand forecast</div>
-          <canvas id="forecast-chart"></canvas>
+        <div class="col-md-6">
+          <div class="forecast-chart-panel">
+            <div class="fw-semibold mb-2">Demand forecast</div>
+            <div class="forecast-chart-canvas-wrap">
+              <canvas id="forecast-chart"></canvas>
+            </div>
+          </div>
         </div>
-        <div class="col-md-6 forecast-chart-panel" style="height:280px;">
-          <div class="fw-semibold mb-2">SHAP driver impact</div>
-          <canvas id="shap-chart"></canvas>
+        <div class="col-md-6">
+          <div class="forecast-chart-panel">
+            <div class="fw-semibold mb-2">SHAP driver impact</div>
+            <div class="forecast-chart-canvas-wrap">
+              <canvas id="shap-chart"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>

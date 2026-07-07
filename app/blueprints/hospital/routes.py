@@ -79,6 +79,7 @@ def dashboard():
                 stock_summary[bt] = {"total": 0, "banks": []}
             stock_summary[bt]["total"] += s.units_available
             stock_summary[bt]["banks"].append({
+                "id": bank.id if bank else None,
                 "name": bank.name if bank else "Unknown",
                 "county": bank.county if bank else "",
                 "units": s.units_available,
