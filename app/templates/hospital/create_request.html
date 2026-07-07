@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Create Blood Request — BloodLink{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+  <div>
+    <h1 class="page-title">Create Blood Request</h1>
+    <p class="page-subtitle">Submit a request to blood banks or specific banks.</p>
+  </div>
+  <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
+</div>
+
+<div class="card-container">
+  <form method="post" action="{{ url_for('hospital.dashboard') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+      <label class="form-label">Blood Type</label>
+      <select name="blood_type" class="form-select" required>
+        <option value="" disabled selected>Select blood type</option>
+        <option>O-</option><option>O+</option>
+        <option>A-</option><option>A+</option>
+        <option>B-</option><option>B+</option>
+        <option>AB-</option><option>AB+</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Units needed</label>
+      <input type="number" name="units_needed" class="form-control" min="1" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Urgency</label>
+      <select name="urgency_level" class="form-select">
+        <option value="urgent">Urgent</option>
+        <option value="normal">Normal</option>
+      </select>
+    </div>
+    <button class="btn btn-primary mt-3" type="submit">Create Request</button>
+  </form>
+</div>
+
+{% endblock %}

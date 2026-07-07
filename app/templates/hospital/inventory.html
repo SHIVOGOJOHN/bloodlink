@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}National Blood Bank Inventory — BloodLink{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+  <div>
+    <h1 class="page-title">National Blood Bank Inventory</h1>
+    <p class="page-subtitle">Overview of blood availability across registered banks.</p>
+  </div>
+  <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
+</div>
+
+<div class="card-container mb-4">
+  {% if stock_summary %}
+    <div class="inventory-grid">
+      {% for blood_type, info in stock_summary.items() %}
+        <div class="inventory-card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">{{ blood_type }}</div>
+            <div class="tiny text-muted">{{ info.total }} units</div>
+          </div>
+          {% if info.banks %}
+            <div class="inventory-bank-list">
+              {% for bank in info.banks[:6] %}
+                <div class="inventory-bank-item">
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <div class="fw-semibold">{{ bank.name }}</div>
+                      <div class="tiny text-muted">{{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}</div>
+                    </div>
+                    <div class="text-end">
+                      <div class="inventory-bank-units">{{ bank.units }}</div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="tiny text-muted">No banks reporting this type.</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="tiny text-muted">No stock data available.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

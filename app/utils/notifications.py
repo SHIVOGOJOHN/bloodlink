@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 from flask import current_app, url_for
 from flask_mail import Message
 
@@ -22,10 +24,26 @@ def _log_notification(recipient: str, channel: str, message: str, status: str) -
         db.session.rollback()
 
 
-def _send_email(subject: str, recipient: str, body: str, reply_to: str | None = None) -> None:
+def _send_email(message: Message) -> None:
+    mail.send(message)
+    _log_notification(message.recipients[0], "email", message.subject, "sent")
+
+
+def _send_email_async(app, message: Message) -> None:
+    with app.app_context():
+        try:
+            mail.send(message)
+            _log_notification(message.recipients[0], "email", message.subject, "sent")
+        except Exception:
+            current_app.logger.exception("Failed to send notification email to %s", message.recipients[0])
+            _log_notification(message.recipients[0], "email", message.subject, "failed")
+
+
+def _send_email_sync_or_async(subject: str, recipient: str, body: str, reply_to: str | None = None) -> bool:
     sender = current_app.config.get("MAIL_DEFAULT_SENDER") or current_app.config.get("MAIL_USERNAME")
     if not sender:
-        raise RuntimeError("Email sender is not configured.")
+        current_app.logger.warning("Email sender is not configured; skipping email to %s", recipient)
+        return False
 
     message = Message(
         subject=subject,
@@ -36,15 +54,28 @@ def _send_email(subject: str, recipient: str, body: str, reply_to: str | None = 
     if reply_to:
         message.reply_to = reply_to
 
-    mail.send(message)
-    _log_notification(recipient, "email", subject, "sent")
+    timeout = current_app.config.get("MAIL_TIMEOUT", 10)
+    current_app.config["MAIL_TIMEOUT"] = timeout
+
+    if current_app.config.get("MAIL_ASYNC", True):
+        app = current_app._get_current_object()
+        thread = threading.Thread(target=_send_email_async, args=(app, message), daemon=True)
+        thread.start()
+        return True
+
+    try:
+        _send_email(message)
+        return True
+    except Exception:
+        current_app.logger.exception("Failed to send notification email to %s", recipient)
+        _log_notification(recipient, "email", subject, "failed")
+        return False
 
 
 def _send_email_safe(subject: str, recipient: str, body: str, reply_to: str | None = None) -> bool:
     try:
-        _send_email(subject, recipient, body, reply_to=reply_to)
-        return True
-    except Exception as exc:
+        return _send_email_sync_or_async(subject, recipient, body, reply_to=reply_to)
+    except Exception:
         current_app.logger.exception("Failed to send notification email to %s", recipient)
         _log_notification(recipient, "email", subject, "failed")
         return False
@@ -126,6 +157,30 @@ def notify_bank_of_request(blood_request: BloodRequest, bank: BloodBank) -> bool
         f"Urgency: {blood_request.urgency_level}\n"
         f"Hospital profile: {hospital_url}\n\n"
         "Please review the request and fulfill it if you can supply the requested blood."
+    )
+    return _send_email_safe(subject, email, body)
+
+
+def notify_hospital_request_created(blood_request: BloodRequest, bank_name: str | None = None) -> bool:
+    hospital = blood_request.hospital
+    if not hospital or not getattr(hospital, "user", None):
+        return False
+    email = getattr(hospital.user, "email", None)
+    if not email:
+        return False
+
+    bank_text = f"Your request was sent to {bank_name}. " if bank_name else ""
+    subject = f"Blood request submitted: {blood_request.units_needed} × {blood_request.blood_type}"
+    body = (
+        f"Hello {hospital.name},\n\n"
+        f"Your targeted blood request has been created successfully.\n"
+        f"{bank_text}The blood bank has been notified and can now review your request.\n\n"
+        f"Details:\n"
+        f"Blood type: {blood_request.blood_type}\n"
+        f"Units needed: {blood_request.units_needed}\n"
+        f"Urgency: {blood_request.urgency_level}\n"
+        f"Hospital profile: {url_for('public_hospital_profile', hospital_id=hospital.id, _external=True)}\n\n"
+        "Thank you for using BloodLink. We will notify you when the blood bank responds."
     )
     return _send_email_safe(subject, email, body)
 

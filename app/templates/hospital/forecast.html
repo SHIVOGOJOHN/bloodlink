@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Operational Demand Forecast — BloodLink{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+  <div>
+    <h1 class="page-title">Operational Demand Forecast</h1>
+    <p class="page-subtitle">Predicted demand and key drivers for your hospital.</p>
+  </div>
+  <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
+</div>
+
+<div class="card-container">
+  {% if forecast_panel %}
+    <div class="fw-semibold mb-2">Summary</div>
+    <div class="tiny text-muted mb-3">{{ forecast_panel.forecast_explanation.summary }}</div>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-label">Total units</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.total_units }}</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-label">Avg/day</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.average_daily_units }}</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-label">Peak</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.peak_units }}</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-label">Top blood type</div>
+          <div class="stat-value">{{ forecast_panel.forecast_summary.top_blood_type }}</div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="tiny text-muted">No forecast data available.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

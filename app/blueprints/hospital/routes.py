@@ -99,53 +99,9 @@ def dashboard():
             return redirect(url_for("hospital.dashboard"))
 
     try:
+        # Build core context used across hospital pages
         requests_list = BloodRequest.query.filter_by(hospital_id=hospital.id).order_by(BloodRequest.created_at.desc()).all()
-        # Aggregate all blood bank stock across all banks, keyed by blood type
-        all_stock = BloodBankStock.query.all()
-        # Build a dict: blood_type -> {total, banks, local_banks, remote_banks, local_units, remote_units}
-        stock_summary: dict = {}
-        for s in all_stock:
-            bt = s.blood_type
-            bank = s.blood_bank
-            if bt not in stock_summary:
-                stock_summary[bt] = {
-                    "total": 0,
-                    "banks": [],
-                    "local_banks": [],
-                    "remote_banks": [],
-                    "local_units": 0,
-                    "remote_units": 0,
-                }
-            distance_km = _estimate_blood_bank_distance(hospital, bank) if bank else None
-            bank_info = {
-                "id": bank.id if bank else None,
-                "name": bank.name if bank else "Unknown",
-                "county": bank.county if bank else "",
-                "units": s.units_available,
-                "expiry": s.expiry_date,
-                "distance": distance_km,
-                "contact_phone": bank.user.phone if bank and bank.user else None,
-            }
-            stock_summary[bt]["total"] += s.units_available
-            stock_summary[bt]["banks"].append(bank_info)
-
-        for blood_type_info in stock_summary.values():
-            blood_type_info["banks"].sort(
-                key=lambda bank_info: (
-                    bank_info["distance"] if bank_info["distance"] is not None else float("inf"),
-                    -bank_info["units"],
-                    bank_info["name"],
-                )
-            )
-            blood_type_info["local_banks"] = [b for b in blood_type_info["banks"] if b["county"] == hospital.county]
-            blood_type_info["remote_banks"] = [b for b in blood_type_info["banks"] if b["county"] != hospital.county]
-            blood_type_info["local_units"] = sum(b["units"] for b in blood_type_info["local_banks"])
-            blood_type_info["remote_units"] = sum(b["units"] for b in blood_type_info["remote_banks"])
-
-        # Also keep a simple list for county-local stock (same county as hospital)
-        local_stock = BloodBankStock.query.join(BloodBank).filter(
-            BloodBank.county == hospital.county
-        ).all()
+        stock_summary, local_stock, all_stock = _build_hospital_stock_summary(hospital)
     except SQLAlchemyError:
         requests_list = []
         stock_summary = {}
@@ -179,6 +135,86 @@ def dashboard():
         latest_request=latest_open_request,
         forecast_panel=forecast_panel,
     )
+
+
+def _build_hospital_stock_summary(hospital):
+    """Return (stock_summary, local_stock, all_stock) for a hospital."""
+    all_stock = BloodBankStock.query.all()
+    stock_summary: dict = {}
+    for s in all_stock:
+        bt = s.blood_type
+        bank = s.blood_bank
+        if bt not in stock_summary:
+            stock_summary[bt] = {
+                "total": 0,
+                "banks": [],
+                "local_banks": [],
+                "remote_banks": [],
+                "local_units": 0,
+                "remote_units": 0,
+            }
+        distance_km = _estimate_blood_bank_distance(hospital, bank) if bank else None
+        bank_info = {
+            "id": bank.id if bank else None,
+            "name": bank.name if bank else "Unknown",
+            "county": bank.county if bank else "",
+            "units": s.units_available,
+            "expiry": s.expiry_date,
+            "distance": distance_km,
+            "contact_phone": bank.user.phone if bank and bank.user else None,
+        }
+        stock_summary[bt]["total"] += s.units_available
+        stock_summary[bt]["banks"].append(bank_info)
+
+    for blood_type_info in stock_summary.values():
+        blood_type_info["banks"].sort(
+            key=lambda bank_info: (
+                bank_info["distance"] if bank_info["distance"] is not None else float("inf"),
+                -bank_info["units"],
+                bank_info["name"],
+            )
+        )
+        blood_type_info["local_banks"] = [b for b in blood_type_info["banks"] if b["county"] == hospital.county]
+        blood_type_info["remote_banks"] = [b for b in blood_type_info["banks"] if b["county"] != hospital.county]
+        blood_type_info["local_units"] = sum(b["units"] for b in blood_type_info["local_banks"])
+        blood_type_info["remote_units"] = sum(b["units"] for b in blood_type_info["remote_banks"])
+
+    local_stock = BloodBankStock.query.join(BloodBank).filter(
+        BloodBank.county == hospital.county
+    ).all()
+    return stock_summary, local_stock, all_stock
+
+
+@hospital_bp.route("/inventory")
+@role_required("hospital_staff")
+def inventory():
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+    stock_summary, local_stock, all_stock = _build_hospital_stock_summary(hospital)
+    forecast_panel = get_hospital_forecast(hospital)
+    return render_template("hospital/inventory.html", hospital=hospital, stock_summary=stock_summary, local_stock=local_stock, forecast_panel=forecast_panel)
+
+
+@hospital_bp.route("/forecast")
+@role_required("hospital_staff")
+def forecast():
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+    forecast_panel = get_hospital_forecast(hospital)
+    return render_template("hospital/forecast.html", hospital=hospital, forecast_panel=forecast_panel)
+
+
+@hospital_bp.route("/create-request", methods=["GET", "POST"])
+@role_required("hospital_staff")
+def create_request_page():
+    hospital = current_user.hospital
+    if not hospital:
+        return redirect(url_for("hospital.profile_setup"))
+    # delegate to existing POST handling by reusing bank_request flow when a bank is selected
+    blood_type = request.args.get("blood_type", "").strip().upper()
+    return render_template("hospital/create_request.html", hospital=hospital, blood_type=blood_type)
 
 
 @hospital_bp.route("/bank-request/<int:bank_id>", methods=["GET", "POST"])
@@ -217,10 +253,19 @@ def bank_request(bank_id):
             db.session.commit()
             invalidate_forecast_cache()
             bank_notified = notify_bank_of_request(request_record, bank)
+            hospital_notified = notify_hospital_request_created(request_record, bank.name)
+            status_message = []
+            if bank_notified:
+                status_message.append("The blood bank has been notified.")
+            else:
+                status_message.append("The blood bank could not be notified by email; please contact them directly.")
+            if hospital_notified:
+                status_message.append("A confirmation email was sent to your hospital account.")
+            else:
+                status_message.append("Hospital confirmation email could not be sent.")
             flash(
-                f"Request created for {bank.name}. " +
-                ("The bank has been notified." if bank_notified else "The bank could not be notified by email; please contact them directly."),
-                "success" if bank_notified else "warning",
+                f"Request created for {bank.name}. {' '.join(status_message)}",
+                "success" if bank_notified and hospital_notified else "warning",
             )
         except SQLAlchemyError as exc:
             db.session.rollback()

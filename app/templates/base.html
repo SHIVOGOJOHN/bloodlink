@@ -35,6 +35,35 @@
             {% if current_user.role in dashboard_routes %}
               <a href="{{ url_for(dashboard_routes[current_user.role]) }}">Dashboard</a>
             {% endif %}
+            {# Role-specific submenus #}
+            {% if current_user.role == 'hospital_staff' %}
+              <a href="{{ url_for('hospital.create_request_page') }}" class="nav-link-item"> 
+                <img src="{{ url_for('static', filename='icons/hospital.svg') }}" alt="Hospital" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Create Request
+              </a>
+              <a href="{{ url_for('hospital.inventory') }}" class="nav-link-item"> 
+                <img src="{{ url_for('static', filename='icons/bank.svg') }}" alt="Inventory" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Inventory
+              </a>
+              <a href="{{ url_for('hospital.forecast') }}" class="nav-link-item"> 
+                <img src="{{ url_for('static', filename='icons/hospital.svg') }}" alt="Forecast" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Forecast
+              </a>
+            {% elif current_user.role == 'bloodbank_staff' %}
+              <a href="{{ url_for('bloodbank.dashboard') }}" class="nav-link-item">
+                <img src="{{ url_for('static', filename='icons/bank.svg') }}" alt="Bank" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Inventory
+              </a>
+              <a href="{{ url_for('bloodbank.profile') }}" class="nav-link-item">
+                <img src="{{ url_for('static', filename='icons/hospital.svg') }}" alt="Profile" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Profile
+              </a>
+            {% elif current_user.role == 'donor' %}
+              <a href="{{ url_for('donor.dashboard') }}" class="nav-link-item">
+                <img src="{{ url_for('static', filename='icons/donor.svg') }}" alt="Home" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Home
+              </a>
+              <a href="{{ url_for('donor.nearby_requests') }}" class="nav-link-item">
+                <img src="{{ url_for('static', filename='icons/bank.svg') }}" alt="Nearby" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Nearby Requests
+              </a>
+              <a href="{{ url_for('donor.profile') }}" class="nav-link-item">
+                <img src="{{ url_for('static', filename='icons/donor.svg') }}" alt="Profile" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">Profile
+              </a>
+            {% endif %}
             {% if current_user.role in profile_routes %}
               <a href="{{ url_for(profile_routes[current_user.role]) }}">My Profile</a>
             {% endif %}
@@ -72,11 +101,24 @@
               <span class="role-pill">{{ role_labels.get(current_user.role, current_user.role.replace('_', ' ')|title) }}</span>
               <span class="text-sm text-muted">{{ current_user.email }}</span>
             </div>
-            {% if current_user.role in dashboard_routes %}
-              <a href="{{ url_for(dashboard_routes[current_user.role]) }}" class="mobile-drawer-link">Dashboard</a>
-            {% endif %}
-            {% if current_user.role in profile_routes %}
-              <a href="{{ url_for(profile_routes[current_user.role]) }}" class="mobile-drawer-link">My Profile</a>
+            {% if current_user.role == 'hospital_staff' %}
+              <a href="{{ url_for('hospital.create_request_page') }}" class="mobile-drawer-link">Create Request</a>
+              <a href="{{ url_for('hospital.inventory') }}" class="mobile-drawer-link">Inventory</a>
+              <a href="{{ url_for('hospital.forecast') }}" class="mobile-drawer-link">Forecast</a>
+            {% elif current_user.role == 'bloodbank_staff' %}
+              <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link">Inventory</a>
+              <a href="{{ url_for('bloodbank.profile') }}" class="mobile-drawer-link">Profile</a>
+            {% elif current_user.role == 'donor' %}
+              <a href="{{ url_for('donor.dashboard') }}" class="mobile-drawer-link">Home</a>
+              <a href="{{ url_for('donor.nearby_requests') }}" class="mobile-drawer-link">Nearby Requests</a>
+              <a href="{{ url_for('donor.profile') }}" class="mobile-drawer-link">Profile</a>
+            {% else %}
+              {% if current_user.role in dashboard_routes %}
+                <a href="{{ url_for(dashboard_routes[current_user.role]) }}" class="mobile-drawer-link">Dashboard</a>
+              {% endif %}
+              {% if current_user.role in profile_routes %}
+                <a href="{{ url_for(profile_routes[current_user.role]) }}" class="mobile-drawer-link">My Profile</a>
+              {% endif %}
             {% endif %}
             <a href="{{ url_for('auth.logout') }}" class="mobile-drawer-link">Log out</a>
           {% else %}
