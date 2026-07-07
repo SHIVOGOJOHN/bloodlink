@@ -1,6 +1,5 @@
-
-
 The top containers/elements in the Operational Demand Forecast container, are poorly arranged/moved far left I guess because of the Upload button or something else, fix that. Also i told you to reinforce and provide an example schema, could be a CSV file of what is expected to be uploaded by the hospital, because what if the hospital uploads its own data that has different columns, also I hope you implemeted the correct architectuire to handle such cases, because as we discussed earlier, hospitals eg hospital A, might have different features than hospital B, or C, so this is an issue that should be carefuylly handled, by either provididng an example schema(eg a downloadable csv example, or preferably the whole csv file of the updated/latest data used to train the model) that hospitals should stick to, or an automation pipeline to handle that(which might be inefficient) or if you have your own better methods to handle such implement those, and if you have everything handled already ignore this. 
+
 
 Also there are no animations in my app, it's too static and boring. So for instance when I run the forecast now, the whole page reloads, this is poor design, you could implement a spinner or loader for that. Also the metrics in the predictions dashboard say e.g, 2.74 units predicted, how will the hospital staff know what this is, is it 200, 20000, 20000? what exactly is it, do something about that. I also told you these metrics are not relevant for hospital staff, they are occupying space for nothing, remove them:
 Model
@@ -24,7 +23,5 @@ I also wanted it to be Constituency and ward level, basically distance-based(pre
 Also when the hospital posts they need blood, all eligible donors, should get an email notification telling them to convey themselves at that hospital, with the link to the hospital's profile. also blood banks should recieve the email to fullfill/deliver blood to the blood bank, also with the link to the hospital profile, the same that is shown in the fulfill section of the dashoard; you know what I mean. Impliment this(smtp). 
 
 Also when the hospital confirms the donation is sucessful from their dashboard, the donor is supposed to get loyalty points(to prioritize em in case they also need blood in the future), updated to their dashboard,alsi there is a achievement section where badges should be displayed(implement the correct logic for this. The badges should be colored svgs/icons, no emojis) and a notification email that the donation has been successful(smtp). Also when it confirms that the blood delivered by the blood bank has been recieved, the blood bank recieves a confirmation email(smtp). So impliment this. 
-
-
 
 
