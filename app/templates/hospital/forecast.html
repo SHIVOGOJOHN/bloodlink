@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Operational Demand Forecast — BloodLink{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
   <div>
@@ -9,39 +12,265 @@
   <a href="{{ url_for('hospital.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
 </div>
 
-<div class="card-container">
-  {% if forecast_panel %}
-    <div class="fw-semibold mb-2">Summary</div>
-    <div class="tiny text-muted mb-3">{{ forecast_panel.forecast_explanation.summary }}</div>
+{% if forecast_panel %}
+<div class="card-container mb-4">
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap forecast-actions-row">
+    <div class="forecast-actions-text">
+      <div class="fw-semibold" style="font-size:1rem;">Operational Demand Forecast</div>
+      <div class="tiny text-muted">A single trained model predicts your 14-day hospital blood demand, with automated retraining when records change. You can also refresh it manually.</div>
+    </div>
+    <div class="forecast-actions-controls">
+      <div class="tiny text-muted mb-2">Upload a hospital training CSV using the sample schema. The system automatically fills hospital metadata from your account, so you only need the feature columns required by the model. Extra columns are allowed and ignored if they are not needed.</div>
+      <div class="tiny text-muted mb-2"><a href="{{ url_for('static', filename='training_example.csv') }}" class="text-primary">Download a feature-only sample CSV file</a> to verify the format before uploading.</div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form method="POST" action="{{ url_for('hospital.run_forecast') }}" class="m-0 forecast-action-form" data-loading-label="Running forecast…">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-primary forecast-action-button">
+            <span class="button-text">Run forecast now</span>
+            <span class="button-spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('hospital.upload_training_data') }}" enctype="multipart/form-data" class="m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-file-row">
+            <label class="btn btn-sm btn-outline-secondary mb-0">
+              Choose training CSV
+              <input type="file" name="training_csv" accept=".csv" required hidden onchange="this.closest('form').querySelector('.chosen-file').textContent = this.files && this.files.length ? this.files[0].name : 'No file chosen'">
+            </label>
+            <div class="tiny text-muted chosen-file" aria-live="polite">No file chosen</div>
+            <button type="submit" class="btn btn-sm btn-success">Upload CSV</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-md-3">
+      <div class="stat-card h-100">
+        <div class="stat-label">Next 14 days</div>
+        <div class="stat-value">{{ forecast_panel.forecast_summary.total_units }}</div>
+        <div class="stat-sub">units predicted</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card h-100">
+        <div class="stat-label">Daily average</div>
+        <div class="stat-value">{{ forecast_panel.forecast_summary.average_daily_units }}</div>
+        <div class="stat-sub">units/day</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card h-100">
+        <div class="stat-label">Peak day</div>
+        <div class="stat-value">{{ forecast_panel.forecast_summary.peak_units }}</div>
+        <div class="stat-sub">units</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card h-100">
+        <div class="stat-label">Top need</div>
+        <div class="stat-value">{{ forecast_panel.forecast_summary.top_blood_type }}</div>
+        <div class="stat-sub">highest demand</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tiny text-muted mt-3">Predictions are expressed in blood units required by your hospital. For example, <strong>2.74</strong> means approximately 3 blood unit bags needed, not milliliters or currency. The model focuses on recent demand and local stock patterns to keep the forecast relevant.</div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-md-4">
+      <div class="stat-card h-100">
+        <div class="stat-label">Forecast note</div>
+        <div class="stat-value" style="font-size:0.95rem; line-height:1.4;">{{ forecast_panel.forecast_explanation.summary }}</div>
+        <div class="stat-sub">operational insight</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card h-100">
+        <div class="stat-label">Primary driver</div>
+        <div class="stat-value" style="font-size:0.95rem; line-height:1.4;">{{ forecast_panel.forecast_explanation.drivers[0].feature if forecast_panel.forecast_explanation.drivers else 'Demand patterns' }}</div>
+        <div class="stat-sub">most influential factor</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card h-100">
+        <div class="stat-label">Driver direction</div>
+        <div class="stat-value" style="font-size:0.95rem; line-height:1.4;">{{ forecast_panel.forecast_explanation.drivers[0].impact if forecast_panel.forecast_explanation.drivers else 'steady' }}</div>
+        <div class="stat-sub">impact on demand</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3">
+    {% for item in forecast_panel.blood_type_summary[:4] %}
+    <div class="col-md-3">
+      <div class="stat-card h-100">
+        <div class="stat-label">{{ item.blood_type }}</div>
+        <div class="stat-value">{{ item.average_units }}</div>
+        <div class="stat-sub">avg units/day</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="mt-4">
     <div class="row g-3">
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-label">Total units</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.total_units }}</div>
+      <div class="col-md-6">
+        <div class="forecast-chart-panel">
+          <div class="fw-semibold mb-2">Demand forecast</div>
+          <div class="forecast-chart-canvas-wrap">
+            <canvas id="forecast-chart"></canvas>
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-label">Avg/day</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.average_daily_units }}</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-label">Peak</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.peak_units }}</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-label">Top blood type</div>
-          <div class="stat-value">{{ forecast_panel.forecast_summary.top_blood_type }}</div>
+      <div class="col-md-6">
+        <div class="forecast-chart-panel">
+          <div class="fw-semibold mb-2">SHAP driver impact</div>
+          <div class="forecast-chart-canvas-wrap">
+            <canvas id="shap-chart"></canvas>
+          </div>
         </div>
       </div>
     </div>
-  {% else %}
-    <div class="tiny text-muted">No forecast data available.</div>
-  {% endif %}
+  </div>
 </div>
+
+<div id="forecast-data" data-source='{{ forecast_panel | tojson | safe }}' data-refresh-url="{{ url_for('api.hospital_forecast', hospital_id=(hospital.id if hospital else 0)) }}" hidden></div>
+<script>
+  (function () {
+    const forecastDataElement = document.getElementById('forecast-data');
+    const data = forecastDataElement ? JSON.parse(forecastDataElement.dataset.source) : null;
+    const canvas = document.getElementById('forecast-chart');
+    const refreshUrl = forecastDataElement ? forecastDataElement.dataset.refreshUrl : '';
+    if (!canvas || !data || !data.daily_totals || !data.daily_totals.length) return;
+    const labels = data.daily_totals.map((item) => item.date);
+    const values = data.daily_totals.map((item) => item.predicted_units);
+    new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Predicted units needed',
+          data: values,
+          borderColor: '#0f766e',
+          backgroundColor: 'rgba(15, 118, 110, 0.12)',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        layout: { padding: { bottom: 28 } },
+        scales: {
+          x: {
+            grid: { display: false },
+            title: { display: true, text: 'Date', color: '#475569', font: { size: 11, weight: '500' } },
+            ticks: {
+              color: '#475569',
+              maxRotation: 0,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 6,
+              align: 'center',
+              padding: 10,
+              font: { size: 11 },
+            },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: '#475569', font: { size: 11 } },
+          },
+        },
+      },
+    });
+
+    window.BloodLinkForecastRefreshUrl = refreshUrl;
+
+    const forecastForms = document.querySelectorAll('.forecast-action-form');
+    forecastForms.forEach((form) => {
+      form.addEventListener('submit', () => {
+        const button = form.querySelector('.forecast-action-button');
+        if (!button) return;
+        button.classList.add('loading');
+        button.disabled = true;
+        form.querySelectorAll('input, button, select, textarea').forEach((field) => {
+          const name = field.getAttribute('name');
+          const type = field.getAttribute('type');
+          if (type === 'hidden' || name === 'csrf_token') return;
+          field.setAttribute('disabled', 'disabled');
+        });
+      });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.forecast-action-button.loading').forEach((btn) => {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      });
+      document.querySelectorAll('.forecast-action-form [disabled]').forEach((field) => {
+        const name = field.getAttribute('name');
+        const type = field.getAttribute('type');
+        if (type === 'hidden' || name === 'csrf_token') return;
+        field.removeAttribute('disabled');
+      });
+    });
+
+    const shapCanvas = document.getElementById('shap-chart');
+    if (shapCanvas && data && data.forecast_explanation && data.forecast_explanation.shap_summary) {
+      const shapLabels = data.forecast_explanation.shap_summary.map((item) => item.feature);
+      const shapValues = data.forecast_explanation.shap_summary.map((item) => item.value);
+      new Chart(shapCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: shapLabels,
+          datasets: [{
+            label: 'SHAP impact',
+            data: shapValues,
+            backgroundColor: 'rgba(15, 118, 110, 0.32)',
+            borderColor: '#0f766e',
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { mode: 'index', intersect: false },
+          },
+          layout: { padding: { top: 8, right: 10, bottom: 24, left: 10 } },
+          scales: {
+            x: {
+              ticks: {
+                maxRotation: 40,
+                minRotation: 40,
+                autoSkip: true,
+                maxTicksLimit: 8,
+                align: 'end',
+                padding: 6,
+              },
+              grid: { display: false },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, padding: 4 },
+              grid: { drawBorder: false },
+            },
+          },
+        },
+      });
+    }
+  })();
+</script>
+{% else %}
+<div class="card-container">
+  <div class="tiny text-muted">No forecast data available.</div>
+</div>
+{% endif %}
 
 {% endblock %}

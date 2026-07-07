@@ -10,11 +10,16 @@
 </div>
 
 <div class="card-container">
-  <form method="post" action="{{ url_for('hospital.dashboard') }}">
+  <div class="fw-semibold mb-1" style="font-size:1rem;">Create Blood Request</div>
+  <div class="tiny text-muted mb-4">
+    Submit a request when stock is insufficient. Blood banks will see and fulfill it from their inventory.
+    If no stock is available, matched donors will be shown below.
+  </div>
+  <form method="post" action="{{ url_for('hospital.create_request_page') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-      <label class="form-label">Blood Type</label>
-      <select name="blood_type" class="form-select" required>
+      <label class="form-label" for="blood_type">Blood Type Needed</label>
+      <select id="blood_type" name="blood_type" class="form-select" required>
         <option value="" disabled selected>Select blood type</option>
         <option>O-</option><option>O+</option>
         <option>A-</option><option>A+</option>
@@ -23,17 +28,17 @@
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Units needed</label>
-      <input type="number" name="units_needed" class="form-control" min="1" required>
+      <label class="form-label" for="units_needed">Units Needed</label>
+      <input id="units_needed" type="number" name="units_needed" class="form-control" min="1" required>
     </div>
     <div class="form-group">
-      <label class="form-label">Urgency</label>
-      <select name="urgency_level" class="form-select">
+      <label class="form-label" for="urgency_level">Urgency Level</label>
+      <select id="urgency_level" name="urgency_level" class="form-select">
         <option value="urgent">Urgent</option>
         <option value="normal">Normal</option>
       </select>
     </div>
-    <button class="btn btn-primary mt-3" type="submit">Create Request</button>
+    <button type="submit" class="btn btn-primary w-100 mt-2">Submit Request</button>
   </form>
 </div>
 

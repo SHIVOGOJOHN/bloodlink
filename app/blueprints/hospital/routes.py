@@ -12,6 +12,7 @@ from app.utils.notifications import (
     notify_new_blood_request,
     notify_bank_of_request,
     notify_donor_donation_confirmed,
+    notify_hospital_request_created,
     notify_request_receipt_confirmed,
 )
 from io import StringIO
@@ -59,54 +60,17 @@ def _estimate_blood_bank_distance(hospital: Hospital, bank: BloodBank) -> float 
     return None
 
 
-@hospital_bp.route("/", methods=["GET", "POST"])
+@hospital_bp.route("/", methods=["GET"])
 @role_required("hospital_staff")
 def dashboard():
     hospital = current_user.hospital
     if not hospital:
         return redirect(url_for("hospital.profile_setup"))
 
-    if request.method == "POST":
-        blood_type = request.form.get("blood_type", "").strip().upper()
-        try:
-            units_needed = int(request.form.get("units_needed", 0) or 0)
-        except ValueError:
-            units_needed = 0
-        urgency_level = request.form.get("urgency_level", "urgent")
-
-        if not blood_type or units_needed <= 0:
-            flash("Please complete the blood request form fully.", "danger")
-        else:
-            try:
-                request_record = BloodRequest(
-                    hospital_id=hospital.id,
-                    blood_type=blood_type,
-                    units_needed=units_needed,
-                    urgency_level=urgency_level,
-                    status="open",
-                )
-                db.session.add(request_record)
-                db.session.commit()
-                invalidate_forecast_cache()
-                donors_sent, banks_sent = notify_new_blood_request(request_record)
-                flash(
-                    f"Blood request created successfully. Notified {donors_sent} eligible donor(s) and {banks_sent} blood bank(s).",
-                    "success",
-                )
-            except SQLAlchemyError as exc:
-                db.session.rollback()
-                flash(f"Unable to save the request right now: {exc}", "warning")
-            return redirect(url_for("hospital.dashboard"))
-
     try:
-        # Build core context used across hospital pages
         requests_list = BloodRequest.query.filter_by(hospital_id=hospital.id).order_by(BloodRequest.created_at.desc()).all()
-        stock_summary, local_stock, all_stock = _build_hospital_stock_summary(hospital)
     except SQLAlchemyError:
         requests_list = []
-        stock_summary = {}
-        local_stock = []
-        all_stock = []
 
     matching_results = []
     latest_open_request = None
@@ -114,26 +78,14 @@ def dashboard():
         open_requests = [r for r in requests_list if r.status == "open"]
         if open_requests:
             latest_open_request = open_requests[0]
-            # Check if local stock can cover the request
-            local_covered = sum(
-                s.units_available for s in local_stock
-                if s.blood_type == latest_open_request.blood_type
-            )
-            # Always run matching so hospital can see donor options
             matching_results = rank_donors_for_request(latest_open_request.blood_type, hospital)
-
-    forecast_panel = get_hospital_forecast(hospital)
-
 
     return render_template(
         "hospital/dashboard.html",
         hospital=hospital,
         requests=requests_list,
-        stock_summary=stock_summary,
-        local_stock=local_stock,
         matching_results=matching_results,
         latest_request=latest_open_request,
-        forecast_panel=forecast_panel,
     )
 
 
@@ -212,7 +164,48 @@ def create_request_page():
     hospital = current_user.hospital
     if not hospital:
         return redirect(url_for("hospital.profile_setup"))
-    # delegate to existing POST handling by reusing bank_request flow when a bank is selected
+
+    if request.method == "POST":
+        blood_type = request.form.get("blood_type", "").strip().upper()
+        try:
+            units_needed = int(request.form.get("units_needed", 0) or 0)
+        except ValueError:
+            units_needed = 0
+        urgency_level = request.form.get("urgency_level", "urgent")
+
+        if not blood_type or units_needed <= 0:
+            flash("Please choose a valid blood type and units needed.", "warning")
+            return render_template("hospital/create_request.html", hospital=hospital, blood_type=blood_type)
+
+        try:
+            request_record = BloodRequest(
+                hospital_id=hospital.id,
+                blood_type=blood_type,
+                units_needed=units_needed,
+                urgency_level=urgency_level,
+                status="open",
+            )
+            db.session.add(request_record)
+            db.session.commit()
+            invalidate_forecast_cache()
+            donors_notified, banks_notified = notify_new_blood_request(request_record)
+            hospital_notified = notify_hospital_request_created(request_record)
+            status_parts = []
+            if donors_notified:
+                status_parts.append(f"{donors_notified} donor(s) notified")
+            if banks_notified:
+                status_parts.append(f"{banks_notified} blood bank(s) alerted")
+            if hospital_notified:
+                status_parts.append("hospital confirmation email sent")
+            flash(
+                f"Request created successfully. {'; '.join(status_parts) if status_parts else 'Notifications were skipped.'}",
+                "success" if hospital_notified else "warning",
+            )
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            flash(f"Unable to create the request right now: {exc}", "warning")
+        return redirect(url_for("hospital.dashboard"))
+
     blood_type = request.args.get("blood_type", "").strip().upper()
     return render_template("hospital/create_request.html", hospital=hospital, blood_type=blood_type)
 

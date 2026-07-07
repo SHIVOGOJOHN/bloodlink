@@ -10,38 +10,196 @@
 </div>
 
 <div class="card-container mb-4">
+  <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+    <div>
+      <div class="fw-semibold" style="font-size:1rem;">National Blood Bank Inventory</div>
+      <div class="tiny text-muted mt-1">
+        Check available stock across all registered blood banks before submitting a request.
+        {% if local_stock %}
+          <span class="fw-semibold" style="color:var(--green);">Local stock ({{ hospital.county }} County) is highlighted.</span>
+        {% else %}
+          <span style="color:var(--warning);">No blood bank registered in your county yet.</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
   {% if stock_summary %}
-    <div class="inventory-grid">
-      {% for blood_type, info in stock_summary.items() %}
-        <div class="inventory-card">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">{{ blood_type }}</div>
-            <div class="tiny text-muted">{{ info.total }} units</div>
-          </div>
-          {% if info.banks %}
-            <div class="inventory-bank-list">
-              {% for bank in info.banks[:6] %}
-                <div class="inventory-bank-item">
-                  <div class="d-flex justify-content-between">
-                    <div>
-                      <div class="fw-semibold">{{ bank.name }}</div>
-                      <div class="tiny text-muted">{{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}</div>
+  <div class="inventory-grid">
+    {% for blood_type in ['O-','O+','A-','A+','B-','B+','AB-','AB+'] %}
+      {% set info = stock_summary.get(blood_type) %}
+      <div class="inventory-card">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <span class="badge bg-danger" style="font-size:0.82rem;">{{ blood_type }}</span>
+          {% if info and info.total > 10 %}
+            <span class="tiny" style="color:var(--green);">● OK</span>
+          {% elif info and info.total > 0 %}
+            <span class="tiny" style="color:var(--warning);">● Low</span>
+          {% else %}
+            <span class="tiny" style="color:var(--danger);">● None</span>
+          {% endif %}
+        </div>
+        <div class="fw-semibold" style="font-size:1.1rem;">{{ info.total if info else 0 }}</div>
+        <div class="tiny text-muted">units total</div>
+        {% if info and info.local_units > 0 %}
+        <div class="tiny mt-1" style="color:var(--green);">{{ info.local_units }} local unit{{ '' if info.local_units == 1 else 's' }}</div>
+        {% endif %}
+        {% if info and info.remote_units > 0 %}
+        <div class="tiny mt-1" style="color:var(--muted);">{{ info.remote_units }} remote unit{{ '' if info.remote_units == 1 else 's' }} available</div>
+        {% endif %}
+
+        {% if info and info.banks %}
+        <div class="inventory-bank-list">
+          <div class="inventory-bank-segment inventory-bank-segment-local">
+            <div class="tiny text-muted inventory-bank-list-title">Local banks in {{ hospital.county }} County</div>
+            {% if info.local_banks %}
+              {% for bank in info.local_banks[:3] %}
+              <div class="inventory-bank-item inventory-bank-item-local">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div>
+                    <div class="fw-semibold inventory-bank-name">
+                      <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                        {{ bank.name }}
+                      </a>
                     </div>
-                    <div class="text-end">
-                      <div class="inventory-bank-units">{{ bank.units }}</div>
+                    <div class="tiny text-muted">
+                      {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                      {% if bank.distance is not none %}
+                        · ~{{ bank.distance }} km away
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                    <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                      {% if bank.contact_phone %}
+                        <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                      {% endif %}
+                      <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
                     </div>
                   </div>
                 </div>
+              </div>
               {% endfor %}
-            </div>
-          {% else %}
-            <div class="tiny text-muted">No banks reporting this type.</div>
-          {% endif %}
+              {% if info.local_banks|length > 3 %}
+              <details class="inventory-local-more mt-2">
+                <summary>Show {{ info.local_banks|length - 3 }} more local bank{{ '' if info.local_banks|length - 3 == 1 else 's' }}</summary>
+                <div class="mt-2">
+                  {% for bank in info.local_banks[3:] %}
+                  <div class="inventory-bank-item inventory-bank-item-local">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                      <div>
+                        <div class="fw-semibold inventory-bank-name">
+                          <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                            {{ bank.name }}
+                          </a>
+                        </div>
+                        <div class="tiny text-muted">
+                          {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                          {% if bank.distance is not none %}
+                            · ~{{ bank.distance }} km away
+                          {% endif %}
+                        </div>
+                      </div>
+                      <div class="text-end">
+                        <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                        <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                          {% if bank.contact_phone %}
+                            <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                          {% endif %}
+                          <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </details>
+              {% endif %}
+            {% else %}
+              <div class="tiny text-muted">No registered local bank is currently reporting {{ blood_type }} stock.</div>
+            {% endif %}
+          </div>
+
+          <div class="inventory-bank-segment mt-3">
+            <div class="tiny text-muted inventory-bank-list-title">Other banks</div>
+            {% if info.remote_banks %}
+              {% for bank in info.remote_banks[:2] %}
+              <div class="inventory-bank-item">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div>
+                    <div class="fw-semibold inventory-bank-name">
+                      <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                        {{ bank.name }}
+                      </a>
+                    </div>
+                    <div class="tiny text-muted">
+                      {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                      {% if bank.distance is not none %}
+                        · ~{{ bank.distance }} km away
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                    <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                      {% if bank.contact_phone %}
+                        <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                      {% endif %}
+                      <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+              {% if info.remote_banks|length > 2 %}
+              <details class="inventory-remote-more mt-2">
+                <summary>Show {{ info.remote_banks|length - 2 }} more remote bank{{ '' if info.remote_banks|length - 2 == 1 else 's' }}</summary>
+                <div class="mt-2">
+                  {% for bank in info.remote_banks[2:] %}
+                  <div class="inventory-bank-item">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                      <div>
+                        <div class="fw-semibold inventory-bank-name">
+                          <a href="{{ url_for('public_bloodbank_profile', bloodbank_id=bank.id) }}" class="text-decoration-none" style="color:var(--primary);">
+                            {{ bank.name }}
+                          </a>
+                        </div>
+                        <div class="tiny text-muted">
+                          {{ bank.county }} County{% if bank.expiry %} · Expires {{ bank.expiry.strftime('%Y-%m-%d') }}{% endif %}
+                          {% if bank.distance is not none %}
+                            · ~{{ bank.distance }} km away
+                          {% endif %}
+                        </div>
+                      </div>
+                      <div class="text-end">
+                        <div class="inventory-bank-units">{{ bank.units }} unit{{ '' if bank.units == 1 else 's' }}</div>
+                        <div class="mt-2 d-flex gap-2 flex-wrap justify-content-end">
+                          {% if bank.contact_phone %}
+                            <a href="tel:{{ bank.contact_phone }}" class="btn btn-outline-secondary btn-sm">Call</a>
+                          {% endif %}
+                          <a href="{{ url_for('hospital.bank_request', bank_id=bank.id, blood_type=blood_type) }}" class="btn btn-primary btn-sm">Request</a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </details>
+              {% endif %}
+            {% else %}
+              <div class="tiny text-muted">No remote bank is currently reporting {{ blood_type }} stock.</div>
+            {% endif %}
+          </div>
         </div>
-      {% endfor %}
-    </div>
+        {% else %}
+        <div class="tiny text-muted mt-2">No blood bank is currently reporting {{ blood_type }} stock.</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
   {% else %}
-    <div class="tiny text-muted">No stock data available.</div>
+  <div class="text-muted tiny">No blood bank stock data available nationally. Blood banks need to log their inventory.</div>
   {% endif %}
 </div>
 

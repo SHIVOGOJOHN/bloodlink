@@ -124,6 +124,34 @@ class HospitalFlowTests(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn(f"/profile/bloodbank/{bloodbank_id}", html)
 
+    def test_create_request_page_submits_request(self):
+        with self.app.app_context():
+            hospital_user = User(email="hosp_create_request@example.com", password_hash="x", full_name="Create Request Hosp", role="hospital_staff")
+            db.session.add(hospital_user)
+            db.session.flush()
+            hospital_user_id = hospital_user.id
+
+            hospital = Hospital(user_id=hospital_user.id, name="Create Request Hospital", county="Nairobi", contact_phone="0712345670")
+            db.session.add(hospital)
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session["_user_id"] = str(hospital_user_id)
+            session["_fresh"] = True
+
+        response = self.client.post(
+            "/hospital/create-request",
+            data={"blood_type": "O+", "units_needed": "3", "urgency_level": "urgent"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+
+        with self.app.app_context():
+            requests = BloodRequest.query.filter_by(hospital_id=hospital.id).all()
+            self.assertEqual(len(requests), 1)
+            self.assertEqual(requests[0].blood_type, "O+")
+            self.assertEqual(requests[0].units_needed, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

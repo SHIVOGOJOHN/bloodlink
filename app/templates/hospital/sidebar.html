@@ -1,0 +1,28 @@
+<aside class="d-none d-lg-block role-sidebar" id="hospital-sidebar">
+  <div class="sidebar-toggle" id="hospital-sidebar-toggle" role="button" aria-pressed="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span class="skip-collapsed">Menu</span>
+  </div>
+  <ul class="sidebar-links">
+    <li><a class="{{ 'active' if request.endpoint == 'hospital.dashboard' else '' }}" href="{{ url_for('hospital.dashboard') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <span class="skip-collapsed">Dashboard</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'hospital.inventory' else '' }}" href="{{ url_for('hospital.inventory') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <span class="skip-collapsed">National Inventory</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'hospital.create_request_page' else '' }}" href="{{ url_for('hospital.create_request_page') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/></svg>
+      <span class="skip-collapsed">Create Request</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'hospital.forecast' else '' }}" href="{{ url_for('hospital.forecast') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v6M5 7h14" stroke-width="1.5"/></svg>
+      <span class="skip-collapsed">Forecast</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'hospital.profile' else '' }}" href="{{ url_for('hospital.profile') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7" stroke-width="1.5"/></svg>
+      <span class="skip-collapsed">Profile</span>
+    </a></li>
+  </ul>
+</aside>
