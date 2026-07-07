@@ -1,0 +1,8 @@
+<aside class="d-none d-lg-block role-sidebar" id="donor-sidebar">
+  <ul class="sidebar-links">
+    <li><a class="{{ 'active' if request.endpoint == 'donor.dashboard' else '' }}" href="{{ url_for('donor.dashboard') }}">Dashboard</a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'donor.nearby_requests' else '' }}" href="{{ url_for('donor.nearby_requests') }}">Nearby requests</a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'donor.profile' else '' }}" href="{{ url_for('donor.profile') }}">Profile</a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'donor.profile_setup' else '' }}" href="{{ url_for('donor.profile_setup') }}">Edit profile</a></li>
+  </ul>
+</aside>
