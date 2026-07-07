@@ -259,7 +259,7 @@ def bank_request(bank_id):
         except SQLAlchemyError as exc:
             db.session.rollback()
             flash(f"Unable to create a targeted request right now: {exc}", "warning")
-        return redirect(url_for("hospital.dashboard"))
+        return redirect(url_for("hospital.inventory"))
 
     blood_type = request.args.get("blood_type", "").strip().upper()
     return render_template("hospital/bank_request.html", hospital=hospital, bank=bank, blood_type=blood_type)

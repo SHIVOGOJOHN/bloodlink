@@ -23,26 +23,6 @@
     {% endif %}
   {% endwith %}
 
-  {% if hospital %}
-  <div class="card-container mb-4">
-    <div class="d-flex align-items-center gap-3">
-      {% if hospital.profile_pic_url %}
-        <img src="{{ hospital.profile_pic_url }}" alt="{{ hospital.name }}"
-          style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">
-      {% else %}
-        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#1e3a5f);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">
-          {{ (hospital.name or 'H')[0].upper() }}
-        </div>
-      {% endif %}
-      <div>
-        <div class="fw-semibold" style="font-size:1.05rem;">{{ hospital.name }}</div>
-        <div class="tiny text-muted">{{ hospital.county }} County &nbsp;·&nbsp; {{ hospital.contact_phone or 'No phone' }}</div>
-      </div>
-      <a href="{{ url_for('hospital.profile') }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">View Profile</a>
-    </div>
-  </div>
-  {% endif %}
-
   <div class="card-container mb-4">
     <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
       <div>

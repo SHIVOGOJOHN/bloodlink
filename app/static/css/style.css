@@ -156,15 +156,14 @@ body.dark-theme .role-pill { background: #3d1515; color: #fca5a5; }
 
 /* small sidebar for larger screens */
 .role-sidebar { width:200px; }
-.role-sidebar .sidebar-links { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; }
-.role-sidebar .sidebar-links a { display:block; padding:8px 10px; border-radius:6px; color:var(--text); background:var(--surface); border:1px solid var(--border); text-decoration:none; }
-.role-sidebar .sidebar-links a:hover { background: rgba(0,0,0,0.03); }
+.role-sidebar .sidebar-links { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px; }
+.role-sidebar .sidebar-links a { display:flex; align-items:center; gap:10px; padding:9px 0; color:var(--text); background:transparent; border:none; text-decoration:none; }
+.role-sidebar .sidebar-links a:hover { background: rgba(0,0,0,0.04); }
 
 /* Active link */
 .role-sidebar .sidebar-links a.active {
-  background: linear-gradient(90deg, rgba(34,197,94,0.08), rgba(59,130,246,0.06));
-  border-color: rgba(34,197,94,0.15);
-  color: var(--text);
+  background: rgba(59,130,246,0.1);
+  color: var(--primary);
   font-weight: 700;
 }
 
