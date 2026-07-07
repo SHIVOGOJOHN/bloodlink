@@ -1,7 +1,4 @@
 <aside class="d-none d-lg-block role-sidebar" id="hospital-sidebar">
-  <div class="sidebar-toggle" id="hospital-sidebar-toggle" role="button" aria-pressed="false" aria-label="Toggle sidebar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18" stroke-width="1.5" stroke-linecap="round"/></svg>
-  </div>
   <ul class="sidebar-links">
     <li><a class="{{ 'active' if request.endpoint == 'hospital.dashboard' else '' }}" href="{{ url_for('hospital.dashboard') }}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M3 11L12 4l9 7v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8Z" stroke-width="1.5" stroke-linejoin="round"/></svg>
