@@ -11,6 +11,17 @@
     <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Log out</a>
   </div>
 
+  <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <nav class="breadcrumb" aria-label="breadcrumb">
+      <a href="{{ url_for('index') }}">Home</a> / <span>Blood bank dashboard</span>
+    </nav>
+    <div class="role-mini-nav d-none d-lg-flex">
+      <a href="{{ url_for('bloodbank.dashboard') }}">Inventory</a>
+      <a href="{{ url_for('bloodbank.profile') }}">Profile</a>
+      <a href="{{ url_for('bloodbank.profile_setup') }}">Settings</a>
+    </div>
+  </div>
+
   {# ── Flash messages ───────────────────────────────────────── #}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
