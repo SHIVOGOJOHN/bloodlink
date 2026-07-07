@@ -7,6 +7,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 from app.models import BloodBank, BloodBankStock, BloodRequest, Donor, DonationRecord, Hospital
 from app.utils.auth import role_required
+from app.utils.notifications import (
+    notify_new_blood_request,
+    notify_donor_donation_confirmed,
+    notify_request_receipt_confirmed,
+)
 from io import StringIO
 
 from app.utils.forecast import (
@@ -50,7 +55,11 @@ def dashboard():
                 db.session.add(request_record)
                 db.session.commit()
                 invalidate_forecast_cache()
-                flash("Blood request created successfully.", "success")
+                donors_sent, banks_sent = notify_new_blood_request(request_record)
+                flash(
+                    f"Blood request created successfully. Notified {donors_sent} eligible donor(s) and {banks_sent} blood bank(s).",
+                    "success",
+                )
             except SQLAlchemyError as exc:
                 db.session.rollback()
                 flash(f"Unable to save the request right now: {exc}", "warning")
@@ -302,10 +311,17 @@ def confirm_donation():
     db.session.commit()
     invalidate_forecast_cache()
 
-    flash(
-        f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}).",
-        "success"
-    )
+    mail_sent = notify_donor_donation_confirmed(donation)
+    if mail_sent:
+        flash(
+            f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}) and donor notified by email.",
+            "success",
+        )
+    else:
+        flash(
+            f"Donation by {donor.name} confirmed. Blood Bank inventory updated (+1 unit of {donor.blood_type}). Donor notification email could not be sent.",
+            "warning",
+        )
     return redirect(url_for("hospital.dashboard"))
 
 
@@ -330,7 +346,11 @@ def confirm_receipt(request_id):
     request_record.status = "received"
     db.session.commit()
 
-    flash("Blood package receipt confirmed. Inventory transaction complete.", "success")
+    mail_sent = notify_request_receipt_confirmed(request_record)
+    if mail_sent:
+        flash("Blood package receipt confirmed and blood bank notified by email.", "success")
+    else:
+        flash("Blood package receipt confirmed. Could not send notification email to the blood bank.", "warning")
     return redirect(url_for("hospital.dashboard"))
 
 
