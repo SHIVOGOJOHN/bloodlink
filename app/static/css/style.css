@@ -527,7 +527,8 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   min-width: 0;
 }
 .request-avatar,
-.request-avatar-fallback {
+.request-avatar-fallback,
+.request-avatar-placeholder {
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -537,7 +538,8 @@ body.dark-theme .alert-info { background: #102640; color: #64b5f6; }
   place-items: center;
 }
 .request-avatar { object-fit: cover; }
-.request-avatar-fallback { background: var(--surface); color: var(--red); font-weight: 700; }
+.request-avatar-fallback,
+.request-avatar-placeholder { background: var(--surface); color: var(--red); font-weight: 700; }
 .request-title {
   margin-bottom: 6px;
   font-weight: 700;

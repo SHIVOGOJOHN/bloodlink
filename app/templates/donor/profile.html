@@ -3,6 +3,10 @@
   {% if current_user.donor and current_user.donor.id == donor.id %}My Profile{% else %}{{ donor.name }} — Donor Profile{% endif %} — BloodLink
 {% endblock %}
 
+{% block role_sidebar %}
+  {% include 'donor/sidebar.html' %}
+{% endblock %}
+
 {% block content %}
 <!-- Lightbox -->
 <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">

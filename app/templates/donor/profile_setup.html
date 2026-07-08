@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Donor Profile Setup — BloodLink{% endblock %}
 
+{% block role_sidebar %}
+  {% include 'donor/sidebar.html' %}
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-md-8 col-lg-6">
