@@ -1,0 +1,20 @@
+<aside class="d-none d-lg-block role-sidebar" id="donor-sidebar">
+  <ul class="sidebar-links">
+    <li><a class="{{ 'active' if request.endpoint == 'donor.dashboard' else '' }}" href="{{ url_for('donor.dashboard') }}">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M3 11L12 4l9 7v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8Z" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <span class="skip-collapsed">Dashboard</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'donor.nearby_requests' else '' }}" href="{{ url_for('donor.nearby_requests') }}">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="skip-collapsed">Nearby Requests</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'donor.profile' else '' }}" href="{{ url_for('donor.profile') }}">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="skip-collapsed">Profile & Rewards</span>
+    </a></li>
+    <li><a class="{{ 'active' if request.endpoint == 'donor.profile_setup' else '' }}" href="{{ url_for('donor.profile_setup') }}">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M4 21h16" stroke-width="1.5"/><path d="M7 11.5l8.5-8.5 3 3L10 14.5H7V11.5Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="skip-collapsed">Edit Profile</span>
+    </a></li>
+  </ul>
+</aside>

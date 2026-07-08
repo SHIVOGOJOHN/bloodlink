@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Incoming Hospital Requests — BloodLink{% endblock %}
+{% block role_sidebar %}
+  {% include 'bloodbank/sidebar.html' %}
+{% endblock %}
+{% block content %}
+  <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+    <div>
+      <h1 class="page-title">Incoming Hospital Requests</h1>
+      <p class="page-subtitle">Review every open hospital request and dispatch available stock.</p>
+    </div>
+    <a href="{{ url_for('bloodbank.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card-container mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <div class="fw-semibold">Found {{ requests|length }} open request{{ '' if requests|length == 1 else 's' }}</div>
+        <div class="tiny text-muted">Urgent requests appear first, then the closest matches.</div>
+      </div>
+      <div class="tiny text-muted">{{ bloodbank.name }} • {{ bloodbank.county }} County</div>
+    </div>
+
+    {% if requests %}
+      <div class="request-list">
+        {% for req in requests %}
+          <div class="request-list-item">
+            <div class="request-card-header">
+              <div class="request-card-left">
+                {% if req.hospital and req.hospital.profile_pic_url %}
+                  <img src="{{ req.hospital.profile_pic_url }}" alt="{{ req.hospital.name }}" class="request-avatar">
+                {% else %}
+                  <div class="request-avatar-fallback">{{ (req.hospital.name if req.hospital else 'H')[0].upper() }}</div>
+                {% endif %}
+                <div style="min-width:0;">
+                  <div class="request-title">
+                    {% if req.hospital %}
+                      <a href="{{ url_for('public_hospital_profile', hospital_id=req.hospital.id) }}">{{ req.hospital.name }}</a>
+                    {% else %}
+                      Hospital request
+                    {% endif %}
+                  </div>
+                  <div class="request-meta">{{ req.hospital.county if req.hospital else '' }}{% if req.hospital and req.hospital.subcounty %}, {{ req.hospital.subcounty }}{% endif %}</div>
+                </div>
+              </div>
+              <div class="request-action">
+                {% if req.status == 'open' %}
+                  <span class="request-badge {{ 'urgent' if req.urgency_level == 'urgent' else 'normal' }}">{{ req.urgency_level|capitalize }}</span>
+                {% elif req.status == 'dispatched' %}
+                  <span class="request-badge compatible">Dispatched</span>
+                {% else %}
+                  <span class="request-badge compatible">Completed</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="request-meta-row">
+              <span class="request-badge compatible">{{ req.blood_type }}</span>
+              <span class="request-badge">{{ req.units_needed }} units</span>
+              {% if req.urgency_level == 'urgent' %}
+                <span class="request-badge urgent">Urgent</span>
+              {% else %}
+                <span class="request-badge normal">Normal</span>
+              {% endif %}
+            </div>
+            <div class="request-meta-row">
+              <div class="request-meta">{% if req.distance_display %}{{ req.distance_display }} · {% endif %}{{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '' }}</div>
+              <div class="request-separator"></div>
+              <div class="d-flex gap-2 flex-wrap align-items-center">
+                {% if req.status == 'open' %}
+                  <form method="post" action="{{ url_for('bloodbank.fulfill_request', request_id=req.id) }}" class="mb-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="units_fulfilled" value="{{ req.units_needed }}">
+                    <button class="btn btn-outline-primary btn-sm" type="submit">Dispatch</button>
+                  </form>
+                {% elif req.status == 'dispatched' %}
+                  {% if req.fulfilled_by_bloodbank_id == bloodbank.id %}
+                    <span class="badge bg-info text-dark">Dispatched</span>
+                  {% else %}
+                    <span class="badge bg-secondary">By Other Bank</span>
+                  {% endif %}
+                {% else %}
+                  {% if req.fulfilled_by_bloodbank_id == bloodbank.id %}
+                    <span class="badge bg-success">Completed</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Completed</span>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted tiny">No incoming requests at this time.</div>
+    {% endif %}
+  </div>
+{% endblock %}

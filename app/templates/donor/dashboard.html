@@ -17,28 +17,11 @@
     </nav>
   </div>
 
+  {% block role_sidebar %}
+    {% include 'donor/sidebar.html' %}
+  {% endblock %}
   <div class="row g-4">
-    <aside class="col-lg-3 d-none d-lg-block role-sidebar" id="donor-sidebar">
-      <ul class="sidebar-links">
-        <li><a class="{{ 'active' if request.endpoint == 'donor.dashboard' else '' }}" href="{{ url_for('donor.dashboard') }}">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M3 11L12 4l9 7v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8Z" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          <span class="skip-collapsed">Dashboard</span>
-        </a></li>
-        <li><a class="{{ 'active' if request.endpoint == 'donor.nearby_requests' else '' }}" href="{{ url_for('donor.nearby_requests') }}">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/></svg>
-          <span class="skip-collapsed">Nearby Requests</span>
-        </a></li>
-        <li><a class="{{ 'active' if request.endpoint == 'donor.profile' else '' }}" href="{{ url_for('donor.profile') }}">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <span class="skip-collapsed">Profile & Rewards</span>
-        </a></li>
-        <li><a class="{{ 'active' if request.endpoint == 'donor.profile_setup' else '' }}" href="{{ url_for('donor.profile_setup') }}">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M12 2v6M5 7h14" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <span class="skip-collapsed">Edit Profile</span>
-        </a></li>
-      </ul>
-    </aside>
-    <div class="col-lg-9">
+    <div class="col-12">
 
   {# Flash messages #}
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -120,226 +103,27 @@
   </div>
 
   <div class="card-container mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
       <div>
-        <div class="fw-semibold">Rewards & achievements</div>
-        <div class="tiny text-muted">Track your badges, certificates, and donor recognition progress.</div>
+        <div class="fw-semibold">Priority requests summary</div>
+        <div class="tiny text-muted">Detailed donor request cards have been moved to the Nearby Requests page.</div>
       </div>
+      <a href="{{ url_for('donor.nearby_requests') }}" class="btn btn-outline-primary btn-sm">Open Nearby Requests</a>
     </div>
-
     <div class="row g-3">
-      <div class="col-lg-5">
-        <div class="reward-summary-card">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <div class="fw-semibold">Next badge</div>
-              {% if badge_progress.next_badge %}
-                <div class="tiny text-muted">{{ badge_progress.next_badge.name }} in {{ badge_progress.needed }} more donation(s).</div>
-              {% else %}
-                <div class="tiny text-muted">You have unlocked every badge in the current loyalty track.</div>
-              {% endif %}
-            </div>
-            {% if badge_progress.next_badge %}
-              <span class="badge" style="background: {{ badge_progress.next_badge.color }}1a; color: {{ badge_progress.next_badge.color }}; border: 1px solid {{ badge_progress.next_badge.color }};">{{ badge_progress.next_badge.threshold }} needed</span>
-            {% endif %}
-          </div>
-          {% if badge_progress.next_badge %}
-            <div class="reward-progress mb-3">
-              <div class="reward-progress-fill" style="width: {{ badge_progress.progress }}%; background: linear-gradient(90deg, #2563eb, #ec4899);"></div>
-            </div>
-            <div class="tiny text-muted">{{ badge_progress.progress }}% toward {{ badge_progress.next_badge.name }}</div>
-          {% else %}
-            <div class="reward-summary-complete text-green">Maximum milestone reached. Keep saving lives!</div>
-          {% endif %}
-          <div class="mt-4">
-            <div class="fw-semibold mb-2">Certificate shelf</div>
-            {% if certificates %}
-              <div class="d-flex flex-wrap gap-2">
-                {% for cert in certificates %}
-                  <div class="certificate-pill" style="border-color: {{ cert.color }}; color: {{ cert.color }};">
-                    <span class="certificate-icon">{{ cert.icon_svg|safe }}</span>
-                    <span>{{ cert.title }}</span>
-                  </div>
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="tiny text-muted">No certificates earned yet. Complete your first donation to unlock one.</div>
-            {% endif %}
-          </div>
+      <div class="col-md-6">
+        <div class="stat-card p-3">
+          <div class="stat-label">Matching requests</div>
+          <div class="stat-value mt-2">{{ nearby_requests_count }}</div>
+          <div class="stat-sub">available nearby</div>
         </div>
       </div>
-
-      <div class="col-lg-7">
-        <div class="badge-grid">
-          {% if badges %}
-            {% for badge in badges %}
-              <div class="badge-card" style="border-color: {{ badge.color }}22; background: {{ badge.color }}11;">
-                <div class="badge-icon" style="color: {{ badge.color }};">{{ badge.icon_svg|safe }}</div>
-                <div>
-                  <div class="fw-semibold">{{ badge.name }}</div>
-                  <div class="tiny text-muted">{{ badge.description }}</div>
-                </div>
-              </div>
-            {% endfor %}
-          {% else %}
-            <div class="badge-card badge-card-empty">
-              <div class="fw-semibold">No badges yet</div>
-              <div class="tiny text-muted">Donate once to unlock your first achievement.</div>
-            </div>
-          {% endif %}
+      <div class="col-md-6">
+        <div class="stat-card p-3">
+          <div class="stat-label">Next badge progress</div>
+          <div class="stat-value mt-2">{{ badge_progress.progress }}%</div>
+          <div class="stat-sub">toward {{ badge_progress.next_badge.name if badge_progress.next_badge else 'your current tier' }}</div>
         </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mt-3">
-      <div class="col-lg-6">
-        <div class="reward-box">
-          <div class="fw-semibold mb-3">Badges earned</div>
-          {% if badges %}
-            <div class="badge-grid">
-              {% for badge in badges %}
-                <div class="badge-card badge-card-compact" style="border-color: {{ badge.color }}22; background: {{ badge.color }}11;">
-                  <div class="badge-icon" style="color: {{ badge.color }};">{{ badge.icon_svg|safe }}</div>
-                  <div>
-                    <div class="fw-semibold">{{ badge.name }}</div>
-                    <div class="tiny text-muted">Unlocked at {{ badge.threshold }} donations</div>
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="tiny text-muted">No unlocked badges yet. Your first recognized donation will appear here.</div>
-          {% endif %}
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <div class="reward-box">
-          <div class="fw-semibold mb-3">Reimbursement history</div>
-          {% if reimbursements %}
-            <div class="list-group list-group-flush">
-              {% for reimbursement in reimbursements %}
-                <div class="list-group-item p-3 rounded border mb-2">
-                  <div class="d-flex justify-content-between align-items-start gap-3">
-                    <div>
-                      <div class="fw-semibold">Ksh {{ reimbursement.amount }}</div>
-                      <div class="tiny text-muted">Requested {{ reimbursement.requested_at.strftime('%Y-%m-%d') }}</div>
-                    </div>
-                    <span class="badge bg-{{ 'success' if reimbursement.status == 'approved' else 'warning' if reimbursement.status == 'pending' else 'secondary' }}">{{ reimbursement.status|capitalize }}</span>
-                  </div>
-                  {% if reimbursement.mpesa_transaction_id %}
-                    <div class="tiny text-muted mt-2">Transaction {{ reimbursement.mpesa_transaction_id }}</div>
-                  {% endif %}
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="tiny text-muted">No reimbursement requests recorded yet.</div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# Badges & mission flow #}
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7">
-      <div class="card-container h-100">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div>
-            <div class="fw-semibold">Featured Donation Requests</div>
-            <div class="tiny text-muted">Requests near you prioritized by match and urgency.</div>
-          </div>
-          <a href="{{ url_for('donor.nearby_requests') }}" class="btn btn-outline-primary btn-sm">View all {{ nearby_requests_count }} requests</a>
-        </div>
-
-        {% if featured_requests %}
-          <div>
-            {% for req in featured_requests %}
-              <div class="request-list-item">
-                <div class="request-card-header">
-                  <div class="request-card-left">
-                    {% if req.hospital.profile_pic_url %}
-                      <img src="{{ req.hospital.profile_pic_url }}" alt="{{ req.hospital.name }}" class="request-avatar">
-                    {% else %}
-                      <div class="request-avatar-fallback">{{ req.hospital.name[0] if req.hospital else 'H' }}</div>
-                    {% endif %}
-                    <div style="min-width:0;">
-                      <div class="request-title">
-                        {% if req.hospital %}
-                          <a href="{{ url_for('public_hospital_profile', hospital_id=req.hospital.id) }}">{{ req.hospital.name }}</a>
-                        {% else %}
-                          Hospital request
-                        {% endif %}
-                      </div>
-                      <div class="request-meta">
-                        {{ req.hospital.county }}{% if req.hospital.subcounty %}, {{ req.hospital.subcounty }}{% endif %}
-                      </div>
-                    </div>
-                  </div>
-                  <div class="request-action">
-                    <span class="request-badge {{ 'urgent' if req.urgency_level == 'urgent' else 'normal' }}">{{ req.urgency_level|capitalize }}</span>
-                  </div>
-                </div>
-                <div class="request-meta-row">
-                  <span class="request-badge compatible">{{ req.blood_type }}</span>
-                  <span class="request-badge">{{ req.units_needed }} units</span>
-                  {% if req.match %}
-                    <span class="request-badge compatible">Compatible</span>
-                  {% else %}
-                    <span class="request-badge warning">No direct match</span>
-                  {% endif %}
-                </div>
-                <div class="request-meta-row">
-                  <div class="request-meta">{{ req.distance_display }} · {{ req.travel_time }}</div>
-                  <a href="tel:{{ req.contact_phone }}" class="btn btn-outline-primary btn-sm">Contact Hospital</a>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="text-muted tiny">No priority donations available near you right now. Check back later for new requests.</div>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="col-lg-5">
-      <div class="card-container mb-3">
-        <div class="fw-semibold mb-3">Mission Progress</div>
-        <div class="mb-3">
-          <div class="d-flex justify-content-between mb-2"><span>Nearby requests</span><strong>{{ nearby_requests_count }}</strong></div>
-          <div class="progress" style="height:10px; background: var(--border);">
-            <div class="progress-bar bg-primary" role="progressbar" style="width:{{ (nearby_requests_count * 10) if nearby_requests_count * 10 < 100 else 100 }}%"></div>
-          </div>
-        </div>
-        <div class="mb-3">
-          <div class="d-flex justify-content-between mb-2"><span>Confirmed donations</span><strong>{{ confirmed_count }}</strong></div>
-          <div class="progress" style="height:10px; background: var(--border);">
-            <div class="progress-bar bg-success" role="progressbar" style="width:{{ (confirmed_count * 8) if confirmed_count * 8 < 100 else 100 }}%"></div>
-          </div>
-        </div>
-        {% if next_badge %}
-          <div class="alert alert-secondary mb-0">
-            <div class="fw-semibold mb-1">Next badge: {{ next_badge.name }}</div>
-            <div class="tiny">Earn {{ next_badge.threshold - confirmed_count }} more confirmed donation(s) to unlock the next achievement.</div>
-          </div>
-        {% else %}
-          <div class="text-muted tiny">You have reached the highest available badge or no further badge is defined.</div>
-        {% endif %}
-      </div>
-
-      <div class="card-container">
-        <div class="fw-semibold mb-3">Eligibility Reminder</div>
-        {% if eligible %}
-          <div class="alert alert-success mb-0">
-            <div class="fw-semibold">Ready to donate.</div>
-            <div class="tiny">You are currently eligible to donate and can respond to urgent requests.</div>
-          </div>
-        {% else %}
-          <div class="alert alert-warning mb-0">
-            <div class="fw-semibold">Next donation possible soon</div>
-            <div class="tiny">Your next eligible date is {{ next_eligible_date.strftime('%Y-%m-%d') if next_eligible_date else 'TBD' }}.</div>
-          </div>
-        {% endif %}
       </div>
     </div>
   </div>

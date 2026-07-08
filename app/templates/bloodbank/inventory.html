@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Blood Bank Inventory — BloodLink{% endblock %}
+{% block role_sidebar %}
+  {% include 'bloodbank/sidebar.html' %}
+{% endblock %}
+{% block content %}
+  <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+    <div>
+      <h1 class="page-title">Inventory</h1>
+      <p class="page-subtitle">Manage your available blood stock and update expiry dates.</p>
+    </div>
+    <a href="{{ url_for('bloodbank.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card-container h-100" style="margin-bottom:0;">
+        <div class="fw-semibold mb-4" style="font-size:1rem;">Update Stock</div>
+        <form method="post" action="{{ url_for('bloodbank.update_stock') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group mb-3">
+            <label class="form-label" for="blood_type">Blood Type</label>
+            <select id="blood_type" name="blood_type" class="form-select" required>
+              <option value="" disabled selected>Select blood type</option>
+              <option value="A+">A+</option>
+              <option value="A-">A−</option>
+              <option value="B+">B+</option>
+              <option value="B-">B−</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB−</option>
+              <option value="O+">O+</option>
+              <option value="O-">O−</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label" for="units_available">Units Available</label>
+            <input id="units_available" type="number" name="units_available" class="form-control" min="0" value="0" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label" for="expiry_date">
+              Earliest Expiry Date <span class="text-muted">(Optional)</span>
+            </label>
+            <input id="expiry_date" type="date" name="expiry_date" class="form-control">
+          </div>
+
+          <button class="btn btn-primary w-100 mt-2" type="submit">Save Stock</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card-container">
+        <div class="fw-semibold mb-3" style="font-size:1rem;">Current Inventory</div>
+        {% if stock %}
+          <ul class="list-unstyled mb-0">
+            {% for item in stock %}
+              <li class="d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px solid var(--border);">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-danger" style="font-size:0.82rem;min-width:36px;text-align:center;">{{ item.blood_type }}</span>
+                  <span class="fw-semibold">{{ item.units_available }}</span>
+                  <span class="text-muted tiny">units</span>
+                </div>
+                <div class="tiny text-muted">
+                  {% if item.expiry_date %}
+                    Expires: {{ item.expiry_date.strftime('%Y-%m-%d') }}
+                  {% else %}
+                    No expiry logged
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted tiny">No stock data recorded yet. Use the Update Stock form to add inventory.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

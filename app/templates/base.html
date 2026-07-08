@@ -81,30 +81,33 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>Profile
               </a>
             {% elif current_user.role == 'bloodbank_staff' %}
-              <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link {% if request.endpoint and 'bloodbank' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Inventory
+              <a href="{{ url_for('bloodbank.dashboard') }}" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.dashboard' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11L12 4l9 7v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8Z" stroke-width="1.5" stroke-linejoin="round"/></svg>Dashboard
               </a>
-              <a href="{{ url_for('bloodbank.profile') }}" class="mobile-drawer-link {% if request.endpoint and 'bloodbank' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 11h8M12 7v10" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Profile
+              <a href="{{ url_for('bloodbank.inventory') }}" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.inventory' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16v2H4z" stroke-width="1.5"/><path d="M4 12h16v2H4z" stroke-width="1.5"/><path d="M4 17h16v2H4z" stroke-width="1.5"/></svg>Inventory
               </a>
-              <a href="{{ url_for('bloodbank.profile_setup') }}" class="mobile-drawer-link {% if request.endpoint and 'bloodbank' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v6M5 7h14" stroke-width="1.5" stroke-linecap="round"/></svg>Profile setup
+              <a href="{{ url_for('bloodbank.profile') }}" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.profile' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>Profile
               </a>
-              <a href="{{ url_for('bloodbank.dashboard') }}#requests" class="mobile-drawer-link {% if request.endpoint and 'bloodbank' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/></svg>Incoming requests
+              <a href="{{ url_for('bloodbank.profile_setup') }}" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.profile_setup' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 21h16" stroke-width="1.5"/><path d="M7 11.5l8.5-8.5 3 3L10 14.5H7V11.5Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Edit Profile
+              </a>
+              <a href="{{ url_for('bloodbank.requests') }}" class="mobile-drawer-link {% if request.endpoint == 'bloodbank.requests' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5"/><path d="M8 9h8" stroke-width="1.5"/><path d="M8 13h8" stroke-width="1.5"/><path d="M8 17h5" stroke-width="1.5"/></svg>Incoming requests
               </a>
             {% elif current_user.role == 'donor' %}
-              <a href="{{ url_for('donor.dashboard') }}" class="mobile-drawer-link {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7 6 6 0 0 1 10 7c-2 2.65-8 7-8 7z" stroke-width="1.5"/></svg>Home
+              <a href="{{ url_for('donor.dashboard') }}" class="mobile-drawer-link {% if request.endpoint == 'donor.dashboard' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11L12 4l9 7v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8Z" stroke-width="1.5" stroke-linejoin="round"/></svg>Dashboard
               </a>
-              <a href="{{ url_for('donor.nearby_requests') }}" class="mobile-drawer-link {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
+              <a href="{{ url_for('donor.nearby_requests') }}" class="mobile-drawer-link {% if request.endpoint == 'donor.nearby_requests' %}active{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Nearby Requests
               </a>
-              <a href="{{ url_for('donor.profile') }}" class="mobile-drawer-link {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7 6 6 0 0 1 10 7c-2 2.65-8 7-8 7z" stroke-width="1.5"/></svg>Profile
+              <a href="{{ url_for('donor.profile') }}" class="mobile-drawer-link {% if request.endpoint == 'donor.profile' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>Profile
               </a>
-              <a href="{{ url_for('donor.profile_setup') }}" class="mobile-drawer-link {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v6M5 7h14" stroke-width="1.5" stroke-linecap="round"/></svg>Edit Profile
+              <a href="{{ url_for('donor.profile_setup') }}" class="mobile-drawer-link {% if request.endpoint == 'donor.profile_setup' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 21h16" stroke-width="1.5"/><path d="M7 11.5l8.5-8.5 3 3L10 14.5H7V11.5Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Edit Profile
               </a>
             {% else %}
               {% if current_user.role in dashboard_routes %}
@@ -135,6 +138,7 @@
     {% endwith %}
 
     {% block hospital_sidebar %}{% endblock %}
+    {% block role_sidebar %}{% endblock %}
 
     {% block body %}
     <main class="page-wrap">
