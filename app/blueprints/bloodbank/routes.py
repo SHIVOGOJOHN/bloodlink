@@ -160,6 +160,28 @@ def fulfill_request(request_id):
     return redirect(url_for("bloodbank.dashboard"))
 
 
+@bloodbank_bp.route("/inventory")
+@role_required("bloodbank_staff")
+def inventory():
+    bloodbank = current_user.bloodbank
+    if not bloodbank:
+        return redirect(url_for("bloodbank.profile_setup"))
+
+    stock = BloodBankStock.query.filter_by(blood_bank_id=bloodbank.id).order_by(BloodBankStock.last_updated.desc()).all()
+    return render_template("bloodbank/inventory.html", bloodbank=bloodbank, stock=stock)
+
+
+@bloodbank_bp.route("/requests")
+@role_required("bloodbank_staff")
+def requests():
+    bloodbank = current_user.bloodbank
+    if not bloodbank:
+        return redirect(url_for("bloodbank.profile_setup"))
+
+    requests_list = BloodRequest.query.order_by(BloodRequest.created_at.desc()).all()
+    return render_template("bloodbank/requests.html", bloodbank=bloodbank, requests=requests_list)
+
+
 @bloodbank_bp.route("/profile")
 @role_required("bloodbank_staff")
 def profile():
