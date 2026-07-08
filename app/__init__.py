@@ -217,6 +217,14 @@ def create_app(config_name=None):
             badges.append("Life Saver")
         if donation_count >= 10:
             badges.append("Blood Hero")
+
+        viewer_sidebar_template = None
+        if current_user.role == 'donor':
+            viewer_sidebar_template = 'donor/sidebar.html'
+        elif current_user.role == 'hospital_staff':
+            viewer_sidebar_template = 'hospital/sidebar.html'
+        elif current_user.role == 'bloodbank_staff':
+            viewer_sidebar_template = 'bloodbank/sidebar.html'
             
         return render_template(
             "donor/profile.html",
@@ -225,6 +233,7 @@ def create_app(config_name=None):
             days_left=days_left,
             donation_count=donation_count,
             badges=badges,
+            viewer_sidebar_template=viewer_sidebar_template,
         )
 
     @app.route("/profile/hospital/<int:hospital_id>")
@@ -234,7 +243,20 @@ def create_app(config_name=None):
         hospital = db.session.get(Hospital, hospital_id)
         if not hospital:
             abort(404)
-        return render_template("hospital/profile.html", hospital=hospital)
+
+        viewer_sidebar_template = None
+        if current_user.role == 'donor':
+            viewer_sidebar_template = 'donor/sidebar.html'
+        elif current_user.role == 'hospital_staff':
+            viewer_sidebar_template = 'hospital/sidebar.html'
+        elif current_user.role == 'bloodbank_staff':
+            viewer_sidebar_template = 'bloodbank/sidebar.html'
+
+        return render_template(
+            "hospital/profile.html",
+            hospital=hospital,
+            viewer_sidebar_template=viewer_sidebar_template,
+        )
 
     @app.route("/profile/bloodbank/<int:bloodbank_id>")
     @login_required
@@ -243,7 +265,20 @@ def create_app(config_name=None):
         bloodbank = db.session.get(BloodBank, bloodbank_id)
         if not bloodbank:
             abort(404)
-        return render_template("bloodbank/profile.html", bloodbank=bloodbank)
+
+        viewer_sidebar_template = None
+        if current_user.role == 'donor':
+            viewer_sidebar_template = 'donor/sidebar.html'
+        elif current_user.role == 'hospital_staff':
+            viewer_sidebar_template = 'hospital/sidebar.html'
+        elif current_user.role == 'bloodbank_staff':
+            viewer_sidebar_template = 'bloodbank/sidebar.html'
+
+        return render_template(
+            "bloodbank/profile.html",
+            bloodbank=bloodbank,
+            viewer_sidebar_template=viewer_sidebar_template,
+        )
 
     @app.errorhandler(404)
     def page_not_found(e):

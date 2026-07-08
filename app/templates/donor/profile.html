@@ -4,7 +4,11 @@
 {% endblock %}
 
 {% block role_sidebar %}
-  {% include 'donor/sidebar.html' %}
+  {% if viewer_sidebar_template %}
+    {% include viewer_sidebar_template %}
+  {% else %}
+    {% include 'donor/sidebar.html' %}
+  {% endif %}
 {% endblock %}
 
 {% block content %}

@@ -3,8 +3,12 @@
   {% if current_user.hospital and current_user.hospital.id == hospital.id %}My Profile{% else %}{{ hospital.name }} — Hospital Profile{% endif %} — BloodLink
 {% endblock %}
 
-{% block hospital_sidebar %}
-  {% include 'hospital/sidebar.html' %}
+{% block role_sidebar %}
+  {% if viewer_sidebar_template %}
+    {% include viewer_sidebar_template %}
+  {% else %}
+    {% include 'hospital/sidebar.html' %}
+  {% endif %}
 {% endblock %}
 
 {% block content %}
