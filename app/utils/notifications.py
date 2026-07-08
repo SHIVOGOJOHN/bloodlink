@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import smtplib
 import threading
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from flask import current_app, url_for
-from flask_mail import Message
 
-from app.extensions import db, mail
+from app.extensions import db
 from app.models import BloodBank, BloodRequest, DonationRecord, Notification
 from app.utils.matching import rank_donors_for_request
 
@@ -24,35 +26,58 @@ def _log_notification(recipient: str, channel: str, message: str, status: str) -
         db.session.rollback()
 
 
-def _create_email_message(subject: str, recipient: str, body: str, reply_to: str | None = None) -> Message:
+def _create_email_message(subject: str, recipient: str, body: str, reply_to: str | None = None) -> MIMEMultipart:
     sender = current_app.config.get("MAIL_DEFAULT_SENDER") or current_app.config.get("MAIL_USERNAME")
     if not sender:
         raise RuntimeError("Email sender is not configured")
 
-    message = Message(
-        subject=subject,
-        sender=sender,
-        recipients=[recipient],
-        body=body,
-    )
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = sender
+    message["To"] = recipient
     if reply_to:
-        message.reply_to = reply_to
+        message["Reply-To"] = reply_to
+    message.attach(MIMEText(body, "plain"))
     return message
 
 
-def _send_message(message: Message) -> None:
-    mail.send(message)
-    _log_notification(message.recipients[0], "email", message.subject, "sent")
+def _send_smtp_message(message: MIMEMultipart) -> None:
+    host = current_app.config.get("MAIL_SERVER")
+    port = current_app.config.get("MAIL_PORT")
+    username = current_app.config.get("MAIL_USERNAME")
+    password = current_app.config.get("MAIL_PASSWORD")
+    use_tls = current_app.config.get("MAIL_USE_TLS", True)
+    use_ssl = current_app.config.get("MAIL_USE_SSL", False)
+    timeout = current_app.config.get("MAIL_TIMEOUT", 15)
+
+    if not host or not port or not username or not password:
+        raise RuntimeError("SMTP configuration is incomplete")
+
+    if use_ssl:
+        smtp_class = smtplib.SMTP_SSL
+    else:
+        smtp_class = smtplib.SMTP
+
+    with smtp_class(host, port, timeout=timeout) as smtp:
+        if not use_ssl and use_tls:
+            smtp.starttls()
+        smtp.login(username, password)
+        smtp.send_message(message)
+
+    _log_notification(message["To"], "email", message["Subject"], "sent")
 
 
-def _send_message_async(app, message: Message) -> None:
+def _send_message(message: MIMEMultipart) -> None:
+    _send_smtp_message(message)
+
+
+def _send_message_async(app, message: MIMEMultipart) -> None:
     with app.app_context():
         try:
-            mail.send(message)
-            _log_notification(message.recipients[0], "email", message.subject, "sent")
+            _send_smtp_message(message)
         except Exception:
-            current_app.logger.exception("Failed to send notification email to %s", message.recipients[0])
-            _log_notification(message.recipients[0], "email", message.subject, "failed")
+            current_app.logger.exception("Failed to send notification email to %s", message["To"])
+            _log_notification(message["To"], "email", message["Subject"], "failed")
 
 
 def send_email_notification(
