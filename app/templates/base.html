@@ -10,7 +10,7 @@
     <script>if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-theme');</script>
     {% block head %}{% endblock %}
   </head>
-  <body class="{{ 'dark-theme' if request.cookies.get('theme') == 'dark' else '' }} {% if request.endpoint and 'hospital' in request.endpoint %}hospital-page{% endif %}">
+  <body class="{{ 'dark-theme' if request.cookies.get('theme') == 'dark' else '' }}{% if request.endpoint and ('hospital' in request.endpoint or 'donor' in request.endpoint or 'bloodbank' in request.endpoint) %} sidebar-page{% endif %}">
     <nav class="navbar">
       <div class="container">
         <a href="{{ url_for('index') }}" class="nav-brand" aria-label="BloodLink home">
@@ -30,31 +30,6 @@
           </button>
           {% if current_user.is_authenticated %}
             {% set role_labels = {'donor': 'Donor', 'hospital_staff': 'Hospital staff', 'bloodbank_staff': 'Blood bank staff', 'admin': 'Admin'} %}
-            {% set dashboard_routes = {'donor': 'donor.dashboard', 'hospital_staff': 'hospital.dashboard', 'bloodbank_staff': 'bloodbank.dashboard', 'admin': 'admin.dashboard'} %}
-            {% set profile_routes = {'donor': 'donor.profile', 'hospital_staff': 'hospital.profile', 'bloodbank_staff': 'bloodbank.profile'} %}
-            {% if current_user.role in dashboard_routes %}
-              <a href="{{ url_for(dashboard_routes[current_user.role]) }}">Dashboard</a>
-            {% endif %}
-            {# Role-specific submenus #}
-            {% if current_user.role == 'hospital_staff' %}
-            {% elif current_user.role == 'bloodbank_staff' %}
-              <a href="{{ url_for('bloodbank.dashboard') }}" class="nav-link-item {% if request.endpoint and 'bloodbank' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style="vertical-align:middle;margin-right:6px"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Inventory
-              </a>
-              <a href="{{ url_for('bloodbank.profile') }}" class="nav-link-item {% if request.endpoint and 'bloodbank' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style="vertical-align:middle;margin-right:6px"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 11h8M12 7v10" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Profile
-              </a>
-            {% elif current_user.role == 'donor' %}
-              <a href="{{ url_for('donor.dashboard') }}" class="nav-link-item {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style="vertical-align:middle;margin-right:6px"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7 6 6 0 0 1 10 7c-2 2.65-8 7-8 7z" stroke-width="1.5"/></svg>Home
-              </a>
-              <a href="{{ url_for('donor.nearby_requests') }}" class="nav-link-item {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style="vertical-align:middle;margin-right:6px"><path d="M3 10l9-5 9 5" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke-width="1.5"/><path d="M10 14v4M14 14v4" stroke-width="1.5" stroke-linecap="round"/></svg>Nearby Requests
-              </a>
-              <a href="{{ url_for('donor.profile') }}" class="nav-link-item {% if request.endpoint and 'donor' in request.endpoint %}active{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style="vertical-align:middle;margin-right:6px"><path d="M12 21s-6-4.35-8-7a6 6 0 0 1 10-7 6 6 0 0 1 10 7c-2 2.65-8 7-8 7z" stroke-width="1.5"/></svg>Profile
-              </a>
-            {% endif %}
             <span class="role-pill">{{ role_labels.get(current_user.role, current_user.role.replace('_', ' ')|title) }}</span>
             <span class="nav-avatar">{{ (current_user.full_name or current_user.email or 'U')[0].upper() }}</span>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm">Log out</a>
