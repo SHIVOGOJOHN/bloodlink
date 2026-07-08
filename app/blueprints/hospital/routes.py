@@ -72,6 +72,15 @@ def dashboard():
     except SQLAlchemyError:
         requests_list = []
 
+    try:
+        confirmed_donations = (
+            DonationRecord.query.filter_by(hospital_id=hospital.id, status="confirmed")
+            .order_by(DonationRecord.confirmed_at.desc())
+            .all()
+        )
+    except SQLAlchemyError:
+        confirmed_donations = []
+
     matching_results = []
     latest_open_request = None
     if requests_list:
@@ -84,6 +93,7 @@ def dashboard():
         "hospital/dashboard.html",
         hospital=hospital,
         requests=requests_list,
+        confirmed_donations=confirmed_donations,
         matching_results=matching_results,
         latest_request=latest_open_request,
     )
