@@ -8,13 +8,9 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span class="skip-collapsed">Inventory</span>
     </a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'bloodbank.profile' else '' }}" href="{{ url_for('bloodbank.profile') }}">
+    <li><a class="{{ 'active' if request.endpoint in ['bloodbank.profile', 'bloodbank.profile_setup'] else '' }}" href="{{ url_for('bloodbank.profile') }}">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3" stroke-width="1.5"/><path d="M5 21c1.5-3 4.5-5 7-5s5.5 2 7 5" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span class="skip-collapsed">Profile</span>
-    </a></li>
-    <li><a class="{{ 'active' if request.endpoint == 'bloodbank.profile_setup' else '' }}" href="{{ url_for('bloodbank.profile_setup') }}">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><path d="M4 21h16" stroke-width="1.5"/><path d="M7 11.5l8.5-8.5 3 3L10 14.5H7V11.5Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="skip-collapsed">Edit Profile</span>
     </a></li>
     <li><a class="{{ 'active' if request.endpoint == 'bloodbank.requests' else '' }}" href="{{ url_for('bloodbank.requests') }}">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5"/><path d="M8 9h8" stroke-width="1.5"/><path d="M8 13h8" stroke-width="1.5"/><path d="M8 17h5" stroke-width="1.5"/></svg>
