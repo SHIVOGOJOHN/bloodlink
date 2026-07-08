@@ -229,7 +229,7 @@ def profile_setup():
             flash("You must agree to the data privacy policy to continue.", "danger")
             return render_template("donor/profile_setup.html", donor=donor)
 
-        last_donation_date = None
+        last_donation_date = donor.last_donation_date if donor else None
         if last_donation_date_str:
             try:
                 last_donation_date = datetime.strptime(last_donation_date_str, "%Y-%m-%d").date()

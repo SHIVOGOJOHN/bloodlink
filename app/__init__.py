@@ -1,5 +1,6 @@
 import os
 from flask import Flask, render_template
+from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import config as config_map

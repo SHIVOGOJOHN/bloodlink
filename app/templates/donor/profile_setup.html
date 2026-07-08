@@ -76,8 +76,8 @@
 
         <div class="mb-3">
           <label for="last_donation_date" class="form-label">Last Donation Date <span class="text-muted">(Optional)</span></label>
-          <input type="date" id="last_donation_date" name="last_donation_date" class="form-control">
-          <div class="form-text">If you have donated before, please provide the approximate date to help us track eligibility.</div>
+          <input type="date" id="last_donation_date" name="last_donation_date" class="form-control" value="{{ donor.last_donation_date.isoformat() if donor and donor.last_donation_date else '' }}">
+          <div class="form-text">If you have donated before, please provide the approximate date to help us track eligibility. Leave blank to preserve the existing last donation date.</div>
         </div>
 
         <div class="mb-3">
